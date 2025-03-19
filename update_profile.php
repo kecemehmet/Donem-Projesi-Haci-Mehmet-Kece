@@ -20,10 +20,12 @@ if ($conn->connect_error) {
     die("Bağlantı hatası: " . $conn->connect_error);
 }
 
-// Kullanıcı bilgilerini al
+// Kullanıcı bilgilerini al (hazırlıklı ifadelerle)
 $username = $_SESSION['username'];
-$sql = "SELECT * FROM users WHERE username='$username'";
-$result = $conn->query($sql);
+$stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
     $row = $result->fetch_assoc();
@@ -36,12 +38,15 @@ if ($result->num_rows > 0) {
     $preferred_exercises = $row['preferred_exercises'];
     $workout_days = $row['workout_days'];
     $workout_duration = $row['workout_duration'];
+    $target_weight = $row['target_weight'];
+    $target_set_date = $row['target_set_date'];
+    $target_achieved_date = $row['target_achieved_date'];
 } else {
     echo "Kullanıcı bulunamadı!";
     exit();
 }
 
-// Form gönderildiğinde verileri güncelle
+// Form gönderildiğinde verileri güncelle (hazırlıklı ifadlerle)
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = $_POST['email'];
     $height = $_POST['height'];
@@ -52,26 +57,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $preferred_exercises = $_POST['preferred_exercises'];
     $workout_days = $_POST['workout_days'];
     $workout_duration = $_POST['workout_duration'];
+    $target_weight = isset($_POST['target_weight']) && $_POST['target_weight'] !== '' ? $_POST['target_weight'] : null;
 
-    $update_sql = "UPDATE users SET 
-        email='$email', 
-        height=$height, 
-        weight=$weight, 
-        bmi=$bmi, 
-        fitness_goal='$fitness_goal', 
-        experience_level='$experience_level', 
-        preferred_exercises='$preferred_exercises', 
-        workout_days=$workout_days, 
-        workout_duration=$workout_duration 
-        WHERE username='$username'";
+    // Hedef kilo belirlenmişse ve daha önce bir tarih yoksa, target_set_date'i güncelle
+    if ($target_weight !== null && $target_set_date === null) {
+        $target_set_date = date("Y-m-d"); // Bugünün tarihi
+    } elseif ($target_weight === null) {
+        $target_set_date = null; // Hedef kilo silinirse tarihi de sıfırla
+    }
 
-    if ($conn->query($update_sql) === TRUE) {
+    // Mevcut kilo hedef kiloya eşitse ve daha önce ulaşılmadıysa, target_achieved_date'i güncelle
+    if ($target_weight !== null && $weight == $target_weight && $target_achieved_date === null) {
+        $target_achieved_date = date("Y-m-d"); // Bugünün tarihi
+    } elseif ($weight != $target_weight) {
+        $target_achieved_date = null; // Hedef kilodan sapılırsa tarihi sıfırla
+    }
+
+    $update_stmt = $conn->prepare("UPDATE users SET email = ?, height = ?, weight = ?, bmi = ?, fitness_goal = ?, experience_level = ?, preferred_exercises = ?, workout_days = ?, workout_duration = ?, target_weight = ?, target_set_date = ?, target_achieved_date = ? WHERE username = ?");
+    $update_stmt->bind_param("sdddsssiidsss", $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $target_achieved_date, $username);
+
+    if ($update_stmt->execute()) {
         echo "<script>alert('Profil başarıyla güncellendi!'); window.location.href='dashboard.php';</script>";
     } else {
-        echo "Hata: " . $update_sql . "<br>" . $conn->error;
+        echo "Hata: " . $conn->error;
     }
+    $update_stmt->close();
 }
 
+$stmt->close();
 $conn->close();
 ?>
 
@@ -80,29 +93,201 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profil Güncelle</title>
+    <title>FitMate - Profil Güncelle</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- AOS Animasyon Kütüphanesi -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <!-- Google Fonts (Modern bir font için) -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome (Simgeler için) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Genel Stil */
         html, body {
-            height: 100%;
             margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh; /* Sayfanın minimum yüksekliğini tam ekran yapar */
+        }
+
+        body {
             display: flex;
             flex-direction: column;
         }
+
         .content {
-            flex: 1;
+            flex: 1 0 auto; /* İçeriğin flex büyümesini sağlar */
             padding-bottom: 60px;
         }
+
         footer {
-            flex-shrink: 0;
+            flex-shrink: 0; /* Footer'ın küçülmesini engeller */
+            width: 100%;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 10px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-logo {
+            height: 60px;
+            width: auto;
+            max-width: 250px;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-logo:hover {
+            transform: scale(1.05);
+        }
+
+        .navbar-brand {
+            padding: 5px 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #fff !important;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: #00ddeb !important;
+        }
+
+        /* Profil Güncelleme Formu */
+        .update-section {
+            padding: 60px 0;
+        }
+
+        .update-card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            background: #fff;
+            padding: 30px;
+        }
+
+        .update-card h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #1a3c34;
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #1a3c34;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 1px solid #ced4da;
+            padding: 10px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #00ddeb;
+            box-shadow: 0 0 5px rgba(0, 221, 235, 0.3);
+            outline: none;
+        }
+
+        .btn-success {
+            background: #00ddeb;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            border-radius: 50px;
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+
+        .btn-success:hover {
+            background: #00b7c2;
+            transform: translateY(-3px);
+        }
+
+        .text-center a {
+            color: #00ddeb;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .text-center a:hover {
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        footer {
+            background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
+            color: white;
+            padding: 20px 0;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: #00ddeb;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive Ayarlar */
+        @media (max-width: 768px) {
+            .navbar-logo {
+                height: 50px;
+                max-width: 200px;
+            }
+
+            .update-card h2 {
+                font-size: 1.8rem;
+            }
+
+            .update-section {
+                padding: 40px 0;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .navbar-logo {
+                height: 40px;
+                max-width: 150px;
+            }
+
+            .update-card {
+                padding: 20px;
+            }
+
+            .update-card h2 {
+                font-size: 1.5rem;
+            }
+
+            .update-section {
+                padding: 20px 0;
+            }
         }
     </style>
 </head>
-<body class="bg-light">
+<body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">FitMate</a>
+            <a class="navbar-brand" href="index.php">
+                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -116,25 +301,34 @@ $conn->close();
                     </li>
                 </ul>
                 <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo $username; ?></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Çıkış Yap</a>
-                    </li>
+                    <?php if (isset($_SESSION['username'])): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo $_SESSION['username']; ?></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="logout.php">Çıkış Yap</a>
+                        </li>
+                    <?php else: ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="register.html">Kayıt Ol</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="login.php">Giriş Yap</a>
+                        </li>
+                    <?php endif; ?>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <!-- İçerik -->
+    <!-- Profil Güncelleme Formu -->
     <div class="content">
-        <div class="container mt-5">
+        <div class="container update-section">
             <div class="row justify-content-center">
                 <div class="col-md-8">
-                    <div class="card shadow">
+                    <div class="card update-card" data-aos="fade-up" data-aos-duration="1000">
                         <div class="card-body">
-                            <h2 class="card-title text-center">Profil Güncelle</h2>
+                            <h2 class="text-center">Profil Güncelle</h2>
                             <form action="update_profile.php" method="POST">
                                 <div class="mb-3">
                                     <label for="email" class="form-label">E-posta</label>
@@ -147,6 +341,10 @@ $conn->close();
                                 <div class="mb-3">
                                     <label for="weight" class="form-label">Kilo (kg)</label>
                                     <input type="number" class="form-control" id="weight" name="weight" step="0.1" value="<?php echo $weight; ?>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="target_weight" class="form-label">Hedef Kilo (kg)</label>
+                                    <input type="number" class="form-control" id="target_weight" name="target_weight" step="0.1" value="<?php echo $target_weight ? $target_weight : ''; ?>" placeholder="Hedef kilonuzu girin (isteğe bağlı)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="fitness_goal" class="form-label">Fitness Hedefiniz</label>
@@ -193,11 +391,39 @@ $conn->close();
     </div>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-4">
+    <footer class="text-center">
         <div class="container">
             <p class="mb-0">© 2025 FitMate. Tüm hakları saklıdır.</p>
-            <p class="mb-0">İletişim: info@fitnessapp.com | Tel: 0123 456 789</p>
+            <p class="mb-0">İletişim: <a href="mailto:info@fitmate.com">info@fitmate.com</a> | Tel: <a href="tel:0123456789">0123 456 789</a></p>
         </div>
     </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- AOS Animasyon Kütüphanesi -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        // AOS Animasyonlarını Başlat
+        AOS.init({
+            once: false, // Animasyonlar her kaydırmada tekrar oynar
+            offset: 50, // Animasyonun tetiklenme mesafesini azaltır
+            duration: 1000 // Animasyon süresi
+        });
+
+        // Sayfanın yüklenmesi tamamlandığında AOS'u yenile
+        window.addEventListener('load', function() {
+            AOS.refresh();
+        });
+
+        // Sayfanın boyutları değiştiğinde AOS'u yenile
+        window.addEventListener('resize', function() {
+            AOS.refresh();
+        });
+
+        // Sayfayı kaydırdığında AOS'u yenile
+        window.addEventListener('scroll', function() {
+            AOS.refresh();
+        });
+    </script>
 </body>
-</html>
+</html> 
