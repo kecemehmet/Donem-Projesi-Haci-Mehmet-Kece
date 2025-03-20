@@ -29,6 +29,7 @@ $result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
     $row = $result->fetch_assoc();
+    $name = $row['name'];
     $email = $row['email'];
     $height = $row['height'];
     $weight = $row['weight'];
@@ -41,13 +42,16 @@ if ($result->num_rows > 0) {
     $target_weight = $row['target_weight'];
     $target_set_date = $row['target_set_date'];
     $target_achieved_date = $row['target_achieved_date'];
+    $show_name_in_success = $row['show_name_in_success'];
+    $show_username_in_success = $row['show_username_in_success'];
 } else {
     echo "Kullanıcı bulunamadı!";
     exit();
 }
 
-// Form gönderildiğinde verileri güncelle (hazırlıklı ifadlerle)
+// Form gönderildiğinde verileri güncelle (hazırlıklı ifadelerle)
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $name = $_POST['name'];
     $email = $_POST['email'];
     $height = $_POST['height'];
     $weight = $_POST['weight'];
@@ -58,6 +62,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $workout_days = $_POST['workout_days'];
     $workout_duration = $_POST['workout_duration'];
     $target_weight = isset($_POST['target_weight']) && $_POST['target_weight'] !== '' ? $_POST['target_weight'] : null;
+
+    // Başarı hikayelerinde görünürlük tercihleri
+    $show_name_in_success = isset($_POST['show_name_in_success']) ? 1 : 0;
+    $show_username_in_success = isset($_POST['show_username_in_success']) ? 1 : 0;
 
     // Hedef kilo belirlenmişse ve daha önce bir tarih yoksa, target_set_date'i güncelle
     if ($target_weight !== null && $target_set_date === null) {
@@ -73,8 +81,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $target_achieved_date = null; // Hedef kilodan sapılırsa tarihi sıfırla
     }
 
-    $update_stmt = $conn->prepare("UPDATE users SET email = ?, height = ?, weight = ?, bmi = ?, fitness_goal = ?, experience_level = ?, preferred_exercises = ?, workout_days = ?, workout_duration = ?, target_weight = ?, target_set_date = ?, target_achieved_date = ? WHERE username = ?");
-    $update_stmt->bind_param("sdddsssiidsss", $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $target_achieved_date, $username);
+    // Tip tanımını düzelttik: 'ssdddsssiidssiis' (16 değişken için)
+    $update_stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, height = ?, weight = ?, bmi = ?, fitness_goal = ?, experience_level = ?, preferred_exercises = ?, workout_days = ?, workout_duration = ?, target_weight = ?, target_set_date = ?, target_achieved_date = ?, show_name_in_success = ?, show_username_in_success = ? WHERE username = ?");
+    $update_stmt->bind_param("ssdddsssiidssiis", $name, $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $target_achieved_date, $show_name_in_success, $show_username_in_success, $username);
 
     if ($update_stmt->execute()) {
         echo "<script>alert('Profil başarıyla güncellendi!'); window.location.href='dashboard.php';</script>";
@@ -110,7 +119,7 @@ $conn->close();
             margin: 0;
             font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh; /* Sayfanın minimum yüksekliğini tam ekran yapar */
+            min-height: 100vh;
         }
 
         body {
@@ -119,12 +128,12 @@ $conn->close();
         }
 
         .content {
-            flex: 1 0 auto; /* İçeriğin flex büyümesini sağlar */
+            flex: 1 0 auto;
             padding-bottom: 60px;
         }
 
         footer {
-            flex-shrink: 0; /* Footer'ın küçülmesini engeller */
+            flex-shrink: 0;
             width: 100%;
         }
 
@@ -330,21 +339,26 @@ $conn->close();
                         <div class="card-body">
                             <h2 class="text-center">Profil Güncelle</h2>
                             <form action="update_profile.php" method="POST">
+                                <!-- Yeni eklenen isim alanı -->
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Adınız</label>
+                                    <input type="text" class="form-control" id="name" name="name" value="<?php echo htmlspecialchars($name ?? ''); ?>" placeholder="Adınızı girin (isteğe bağlı)">
+                                </div>
                                 <div class="mb-3">
                                     <label for="email" class="form-label">E-posta</label>
-                                    <input type="email" class="form-control" id="email" name="email" value="<?php echo $email; ?>" required>
+                                    <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($email); ?>" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="height" class="form-label">Boy (cm)</label>
-                                    <input type="number" class="form-control" id="height" name="height" step="0.1" value="<?php echo $height; ?>" required>
+                                    <input type="number" class="form-control" id="height" name="height" step="0.1" value="<?php echo htmlspecialchars($height); ?>" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="weight" class="form-label">Kilo (kg)</label>
-                                    <input type="number" class="form-control" id="weight" name="weight" step="0.1" value="<?php echo $weight; ?>" required>
+                                    <input type="number" class="form-control" id="weight" name="weight" step="0.1" value="<?php echo htmlspecialchars($weight); ?>" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="target_weight" class="form-label">Hedef Kilo (kg)</label>
-                                    <input type="number" class="form-control" id="target_weight" name="target_weight" step="0.1" value="<?php echo $target_weight ? $target_weight : ''; ?>" placeholder="Hedef kilonuzu girin (isteğe bağlı)">
+                                    <input type="number" class="form-control" id="target_weight" name="target_weight" step="0.1" value="<?php echo htmlspecialchars($target_weight ? $target_weight : ''); ?>" placeholder="Hedef kilonuzu girin (isteğe bağlı)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="fitness_goal" class="form-label">Fitness Hedefiniz</label>
@@ -374,11 +388,27 @@ $conn->close();
                                 </div>
                                 <div class="mb-3">
                                     <label for="workout_days" class="form-label">Haftada Kaç Gün Antrenman Yapabilirsiniz?</label>
-                                    <input type="number" class="form-control" id="workout_days" name="workout_days" min="1" max="7" value="<?php echo $workout_days; ?>" required>
+                                    <input type="number" class="form-control" id="workout_days" name="workout_days" min="1" max="7" value="<?php echo htmlspecialchars($workout_days); ?>" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="workout_duration" class="form-label">Antrenman Süresi (dk)</label>
-                                    <input type="number" class="form-control" id="workout_duration" name="workout_duration" min="30" max="120" value="<?php echo $workout_duration; ?>" required>
+                                    <input type="number" class="form-control" id="workout_duration" name="workout_duration" min="30" max="120" value="<?php echo htmlspecialchars($workout_duration); ?>" required>
+                                </div>
+                                <!-- Başarı Hikayelerinde Görünürlük Tercihleri -->
+                                <div class="mb-3">
+                                    <label class="form-label">Başarı Hikayelerinde Görünürlük</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="show_name_in_success" name="show_name_in_success" <?php if ($show_name_in_success) echo "checked"; ?>>
+                                        <label class="form-check-label" for="show_name_in_success">
+                                            Adımın başarı hikayelerinde gösterilmesine izin ver
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="show_username_in_success" name="show_username_in_success" <?php if ($show_username_in_success) echo "checked"; ?>>
+                                        <label class="form-check-label" for="show_username_in_success">
+                                            Kullanıcı adımın başarı hikayelerinde gösterilmesine izin ver
+                                        </label>
+                                    </div>
                                 </div>
                                 <button type="submit" class="btn btn-success w-100">Güncelle</button>
                             </form>
@@ -405,25 +435,22 @@ $conn->close();
     <script>
         // AOS Animasyonlarını Başlat
         AOS.init({
-            once: false, // Animasyonlar her kaydırmada tekrar oynar
-            offset: 50, // Animasyonun tetiklenme mesafesini azaltır
-            duration: 1000 // Animasyon süresi
+            once: false,
+            offset: 50,
+            duration: 1000
         });
 
-        // Sayfanın yüklenmesi tamamlandığında AOS'u yenile
         window.addEventListener('load', function() {
             AOS.refresh();
         });
 
-        // Sayfanın boyutları değiştiğinde AOS'u yenile
         window.addEventListener('resize', function() {
             AOS.refresh();
         });
 
-        // Sayfayı kaydırdığında AOS'u yenile
         window.addEventListener('scroll', function() {
             AOS.refresh();
         });
     </script>
 </body>
-</html> 
+</html>

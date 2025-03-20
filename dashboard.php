@@ -7,6 +7,9 @@ if (!isset($_SESSION['username'])) {
     exit();
 }
 
+// Admin kontrolü (oturumdan al)
+$is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === 1;
+
 // Veritabanı bağlantı bilgileri
 $servername = "localhost";
 $username = "root";
@@ -370,44 +373,48 @@ $weekly_program = createWorkoutProgram($bmi, $fitness_goal, $experience_level, $
 </head>
 <body>
     <!-- Navbar -->
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="index.php">
-            <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php">Anasayfa</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link active" href="dashboard.php">Dashboard</a>
-                </li>
-            </ul>
-            <ul class="navbar-nav">
-                <?php if (isset($_SESSION['username'])): ?>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.php">
+                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo $_SESSION['username']; ?></a>
+                        <a class="nav-link" href="index.php">Anasayfa</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Çıkış Yap</a>
+                        <a class="nav-link active" href="dashboard.php">Dashboard</a>
                     </li>
-                <?php else: ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="register.html">Kayıt Ol</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="login.php">Giriş Yap</a>
-                    </li>
-                <?php endif; ?>
-            </ul>
+                    <?php if ($is_admin): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin.php">Admin Paneli</a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+                <ul class="navbar-nav">
+                    <?php if (isset($_SESSION['username'])): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="logout.php">Çıkış Yap</a>
+                        </li>
+                    <?php else: ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="register.html">Kayıt Ol</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="login.php">Giriş Yap</a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <!-- İçerik -->
     <div class="content">
@@ -415,43 +422,42 @@ $weekly_program = createWorkoutProgram($bmi, $fitness_goal, $experience_level, $
             <div class="row justify-content-center">
                 <div class="col-md-10">
                     <!-- Kullanıcı Bilgileri -->
-<!-- Kullanıcı Bilgileri -->
-<div class="card user-info-card" data-aos="fade-up" data-aos-duration="1000">
-    <div class="card-body text-center">
-        <h2>Hoş Geldiniz, <?php echo $username; ?>!</h2>
-        <div class="user-info mt-4">
-            <div class="info-item">
-                <i class="fas fa-weight"></i>
-                <span>BMI: <?php echo number_format($bmi, 2); ?></span>
-            </div>
-            <div class="info-item">
-                <i class="fas fa-bullseye"></i>
-                <span>Hedef: <?php echo ucfirst($fitness_goal); ?></span>
-            </div>
-            <div class="info-item">
-                <i class="fas fa-user-graduate"></i>
-                <span>Seviye: <?php echo ucfirst($experience_level); ?></span>
-            </div>
-            <div class="info-item">
-                <i class="fas fa-dumbbell"></i>
-                <span>Tercih: <?php echo ucfirst($preferred_exercises); ?></span>
-            </div>
-            <div class="info-item">
-                <i class="fas fa-calendar-week"></i>
-                <span>Gün: <?php echo $workout_days; ?></span>
-            </div>
-            <div class="info-item">
-                <i class="fas fa-clock"></i>
-                <span>Süre: <?php echo $workout_duration; ?> dk</span>
-            </div>
-        </div>
-        <!-- BMI Bilgi Kutusu -->
-        <div class="alert alert-info mt-4" role="alert" style="border-radius: 15px; background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%); color: #1a3c34;">
-            <i class="fas fa-info-circle me-2"></i>
-            Vücut Kitle Endeksi (BMI) hesaplamalarımız, Dünya Sağlık Örgütü (WHO) standartlarına uygun olarak gerçekleştirilmektedir.
-        </div>
-        <!-- Hedef Kilo Bilgi Kutusu -->
-        <?php if ($target_weight && $weight): ?>
+                    <div class="card user-info-card" data-aos="fade-up" data-aos-duration="1000">
+                        <div class="card-body text-center">
+                            <h2>Hoş Geldiniz, <?php echo htmlspecialchars($username); ?>!</h2>
+                            <div class="user-info mt-4">
+                                <div class="info-item">
+                                    <i class="fas fa-weight"></i>
+                                    <span>BMI: <?php echo number_format($bmi, 2); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-bullseye"></i>
+                                    <span>Hedef: <?php echo ucfirst($fitness_goal); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-user-graduate"></i>
+                                    <span>Seviye: <?php echo ucfirst($experience_level); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-dumbbell"></i>
+                                    <span>Tercih: <?php echo ucfirst($preferred_exercises); ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-calendar-week"></i>
+                                    <span>Gün: <?php echo $workout_days; ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>Süre: <?php echo $workout_duration; ?> dk</span>
+                                </div>
+                            </div>
+                            <!-- BMI Bilgi Kutusu -->
+                            <div class="alert alert-info mt-4" role="alert" style="border-radius: 15px; background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%); color: #1a3c34;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Vücut Kitle Endeksi (BMI) hesaplamalarımız, Dünya Sağlık Örgütü (WHO) standartlarına uygun olarak gerçekleştirilmektedir.
+                            </div>
+                            <!-- Hedef Kilo Bilgi Kutusu -->
+                            <?php if ($target_weight && $weight): ?>
                                 <div class="alert alert-success mt-4" role="alert" style="border-radius: 15px; background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); color: #1a3c34;">
                                     <i class="fas fa-bullseye me-2"></i>
                                     Hedef Kilonuz: <?php echo $target_weight; ?> kg | 
@@ -467,11 +473,11 @@ $weekly_program = createWorkoutProgram($bmi, $fitness_goal, $experience_level, $
                                     ?>
                                 </div>
                             <?php endif; ?>
-        <div class="mt-4">
-            <a href="update_profile.php" class="btn btn-primary">Profil Güncelle</a>
-        </div>
-    </div>
-</div>
+                            <div class="mt-4">
+                                <a href="update_profile.php" class="btn btn-primary">Profil Güncelle</a>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Haftalık Antrenman Programı -->
                     <div class="workout-section">

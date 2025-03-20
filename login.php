@@ -1,4 +1,8 @@
 <?php
+// Oturum süresini uzat (oturum başlatılmadan önce yapılmalı)
+ini_set('session.gc_maxlifetime', 3600); // 1 saat
+session_set_cookie_params(3600); // Çerez süresi 1 saat
+
 session_start(); // Oturumu başlat
 
 $servername = "localhost";
@@ -19,14 +23,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = isset($_POST['username']) ? $_POST['username'] : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
 
-    // Kullanıcıyı bul
-    $sql = "SELECT * FROM users WHERE username='$username'";
-    $result = $conn->query($sql);
+    // Kullanıcıyı bul (Hazırlıklı sorgu ile)
+    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
         if (password_verify($password, $row['password'])) {
             $_SESSION['username'] = $username; // Oturum başlat
+            $_SESSION['is_admin'] = $row['is_admin']; // is_admin değerini oturuma ekle
+            session_regenerate_id(true); // Oturum ID'sini yenile (güvenlik için)
             header("Location: dashboard.php"); // Dashboard’a yönlendir
             exit();
         } else {
@@ -35,6 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } else {
         $error = "Kullanıcı bulunamadı!";
     }
+    $stmt->close();
 }
 
 $conn->close();
@@ -260,7 +269,7 @@ $conn->close();
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['username'])): ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo $_SESSION['username']; ?></a>
+                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="dashboard.php">Dashboard</a>
@@ -289,11 +298,11 @@ $conn->close();
                     <div class="card login-card" data-aos="fade-up" data-aos-duration="1000">
                         <div class="card-body">
                             <h2 class="text-center">Giriş Yap</h2>
-                            <?php if (isset($error)) { ?>
+                            <?php if (isset($error)): ?>
                                 <div class="alert alert-danger" role="alert">
-                                    <?php echo $error; ?>
+                                    <?php echo htmlspecialchars($error); ?>
                                 </div>
-                            <?php } ?>
+                            <?php endif; ?>
                             <form action="login.php" method="POST">
                                 <div class="mb-3">
                                     <label for="username" class="form-label">Kullanıcı Adı</label>

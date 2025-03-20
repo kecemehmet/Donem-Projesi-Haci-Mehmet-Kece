@@ -33,13 +33,25 @@ CREATE TABLE IF NOT EXISTS `users` (
   `preferred_exercises` varchar(50) DEFAULT NULL,
   `workout_days` int DEFAULT NULL,
   `workout_duration` int DEFAULT NULL,
+  `target_weight` float DEFAULT NULL,
+  `target_set_date` date DEFAULT NULL,
+  `target_achieved_date` date DEFAULT NULL,
+  `show_name_in_success` tinyint(1) DEFAULT '0',
+  `show_username_in_success` tinyint(1) DEFAULT '0',
+  `name` varchar(255) DEFAULT NULL,
+  `is_admin` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- fitness_db.users: ~0 rows (yaklaşık) tablosu için veriler indiriliyor
+-- fitness_db.users: ~4 rows (yaklaşık) tablosu için veriler indiriliyor
 DELETE FROM `users`;
+INSERT INTO `users` (`id`, `username`, `password`, `email`, `height`, `weight`, `bmi`, `fitness_goal`, `experience_level`, `preferred_exercises`, `workout_days`, `workout_duration`, `target_weight`, `target_set_date`, `target_achieved_date`, `show_name_in_success`, `show_username_in_success`, `name`, `is_admin`) VALUES
+	(7, 'deneme123', '$2y$10$jUO8lPK6IlVCNFJSEc2.W.DhrqyPz39kJ111j1ywRxEblV/sG8j9y', 'deneme@deneme.com', 175, 100, 32.6531, 'weight_loss', 'intermediate', 'strength', 7, 60, 100, '2025-03-12', '2025-03-19', 0, 0, 'Deneme Kullanıcı', 0),
+	(8, 'admin', '$2y$10$VGp7dcRvdP6w9TBUgSDrMOYkg40aDV0pWVuIRkvDBWCVew4Ri0mpm', 'admin@gmail.com', 175, 120, 39.1837, 'endurance', 'advanced', 'flexibility', 6, 60, 100, '2025-03-19', NULL, 0, 0, 'admin', 1),
+	(10, 'myildirim', '$2y$10$ZeFP9c2TJCSXnsuN85ZL/.I/q7Mfuy1t42HvLV7C9X9Th2lpCV9Ee', 'myildirim@gmail.com', 190, 85, 23.5457, 'muscle_gain', 'beginner', 'strength', 7, 120, 85, '2025-03-20', '2025-03-20', 1, 1, 'Muhammet Yıldırım', 0),
+	(11, 'deneme12', '$2y$10$sG8HmBJk4zSQdb4kyFeomeuzsE3ri70nMqtBYst.ylXeZnuvTrPIq', 'deneme12@gmail.com', 190, 75, 20.7756, 'muscle_gain', 'beginner', 'strength', 7, 120, 75, '2025-03-20', '2025-03-20', 1, 1, '', 0);
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

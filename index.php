@@ -1,4 +1,8 @@
 <?php
+// Oturum süresini uzat (oturum başlatılmadan önce yapılmalı)
+ini_set('session.gc_maxlifetime', 3600); // 1 saat
+session_set_cookie_params(3600); // Çerez süresi 1 saat
+
 session_start(); // Oturumu başlat
 
 // Veritabanı bağlantı bilgileri
@@ -14,24 +18,62 @@ if ($conn->connect_error) {
     die("Bağlantı hatası: " . $conn->connect_error);
 }
 
+// Admin kontrolü (oturumdan al)
+$is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1;
+
+// Hata ayıklama için
+// Veritabanından is_admin değerini tekrar kontrol et
+if (isset($_SESSION['username'])) {
+    $stmt = $conn->prepare("SELECT is_admin FROM users WHERE username = ?");
+    $stmt->bind_param("s", $_SESSION['username']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+    }
+    $stmt->close();
+}
+
+// İlk 2 harfi gösterip geri kalanını gizleyen fonksiyon (dosyanın başında tanımlıyoruz)
+function maskString($string) {
+    if (strlen($string) <= 2) {
+        return $string;
+    }
+    return substr($string, 0, 2) . "*****";
+}
+
 // Hedeflerine ulaşan kullanıcıları al
 $success_stories = [];
-$success_query = "SELECT username, target_set_date, target_achieved_date 
+$success_query = "SELECT id, username, name, target_set_date, target_achieved_date, show_name_in_success, show_username_in_success 
                  FROM users 
                  WHERE target_weight IS NOT NULL 
                  AND target_achieved_date IS NOT NULL 
                  AND weight = target_weight 
-                 ORDER BY target_achieved_date DESC LIMIT 5";
+                 ORDER BY target_achieved_date DESC";
 $success_result = $conn->query($success_query);
 
 if ($success_result->num_rows > 0) {
     while ($row = $success_result->fetch_assoc()) {
+        // Hedef tarih farkını hesapla (sadece gösterim için, koşul olarak kullanmıyoruz)
+        $set_date = new DateTime($row['target_set_date']);
+        $achieved_date = new DateTime($row['target_achieved_date']);
+        $interval = $set_date->diff($achieved_date);
+        $days = $interval->days;
+
+        // Tarih farkı koşulunu kaldırdık
         $success_stories[] = [
+            'id' => $row['id'],
             'username' => $row['username'],
+            'name' => $row['name'],
             'target_set_date' => $row['target_set_date'],
-            'target_achieved_date' => $row['target_achieved_date']
+            'target_achieved_date' => $row['target_achieved_date'],
+            'days' => $days, // Gün farkını gösterim için ekledik
+            'show_name_in_success' => $row['show_name_in_success'],
+            'show_username_in_success' => $row['show_username_in_success']
         ];
     }
+    // En fazla 5 kullanıcı göster
+    $success_stories = array_slice($success_stories, 0, 5);
 }
 
 $conn->close();
@@ -49,9 +91,9 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- AOS Animasyon Kütüphanesi -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <!-- Google Fonts (Modern bir font için) -->
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome (Simgeler için) -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Genel Stil */
@@ -396,11 +438,16 @@ $conn->close();
                     <li class="nav-item">
                         <a class="nav-link" href="dashboard.php">Dashboard</a>
                     </li>
+                    <?php if ($is_admin): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin.php">Admin Paneli</a>
+                        </li>
+                    <?php endif; ?>
                 </ul>
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['username'])): ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo $_SESSION['username']; ?></a>
+                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="logout.php">Çıkış Yap</a>
@@ -529,19 +576,26 @@ $conn->close();
                     <?php if (count($success_stories) > 0): ?>
                         <?php foreach ($success_stories as $story): ?>
                             <?php
-                            // Hedefe ulaşma süresini hesapla
-                            $set_date = new DateTime($story['target_set_date']);
-                            $achieved_date = new DateTime($story['target_achieved_date']);
-                            $interval = $set_date->diff($achieved_date);
-                            $days = $interval->days;
+                            // Kullanıcı görünürlüğünü belirle
+                            if ($story['show_name_in_success'] && $story['show_username_in_success'] && $story['name']) {
+                                $display_name = htmlspecialchars($story['name'] . " (" . $story['username'] . ")");
+                            } elseif ($story['show_name_in_success'] && $story['name']) {
+                                $display_name = htmlspecialchars($story['name']);
+                            } elseif ($story['show_username_in_success']) {
+                                $display_name = htmlspecialchars($story['username']);
+                            } else {
+                                $masked_name = $story['name'] ? maskString($story['name']) : "AdYok";
+                                $masked_username = maskString($story['username']);
+                                $display_name = htmlspecialchars($masked_name . " (" . $masked_username . ")");
+                            }
                             ?>
                             <div class="col-md-4 mb-4">
                                 <div class="card success-card" data-aos="fade-up">
                                     <div class="card-body">
                                         <i class="fas fa-trophy mb-3"></i>
-                                        <h5 class="card-title"><?php echo htmlspecialchars($story['username']); ?></h5>
+                                        <h5 class="card-title"><?php echo $display_name; ?></h5>
                                         <p class="card-text">
-                                            Hedefine <strong><?php echo $days; ?> gün</strong> içinde ulaştı! 🎉
+                                            Hedefine <strong><?php echo $story['days']; ?> gün</strong> içinde ulaştı! 🎉
                                         </p>
                                     </div>
                                 </div>
@@ -557,43 +611,7 @@ $conn->close();
         </section>
 
         <!-- Blog/İpuçları Bölümü -->
-        <section class="blog-section">
-            <div class="container">
-                <h2 class="text-center mb-5" data-aos="fade-up">Fitness İpuçları ve Blog</h2>
-                <div class="row">
-                    <div class="col-md-4 mb-4">
-                        <div class="card blog-card" data-aos="fade-up" data-aos-delay="100">
-                            <img src="https://blog.korayspor.com/wp-content/uploads/2023/08/Sabit-Bisiklet-Yag-Yakar-Mi.jpg" alt="Blog 1">
-                            <div class="card-body">
-                                <h5 class="card-title">Kardiyo ile Kilo Verme Rehberi</h5>
-                                <p class="card-text">Kardiyo egzersizleriyle nasıl daha hızlı kilo verebileceğinizi öğrenin.</p>
-                                <a href="#" class="btn">Devamını Oku</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-4">
-                        <div class="card blog-card" data-aos="fade-up" data-aos-delay="200">
-                            <img src="https://www.macfit.com/wp-content/uploads/2023/01/gogus-buyutme-yontemleri.jpg" alt="Blog 2">
-                            <div class="card-body">
-                                <h5 class="card-title">Kas Kütlesi Artırmanın 5 Yolu</h5>
-                                <p class="card-text">Kuvvet antrenmanlarıyla kas kütlenizi nasıl artıracağınızı keşfedin.</p>
-                                <a href="#" class="btn">Devamını Oku</a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-4">
-                        <div class="card blog-card" data-aos="fade-up" data-aos-delay="300">
-                            <img src="https://images.unsplash.com/photo-1506126613408-eca07ce68773" alt="Blog 3">
-                            <div class="card-body">
-                                <h5 class="card-title">Esneklik ve Mobilite İçin Yoga</h5>
-                                <p class="card-text">Yoga ile esnekliğinizi artırın ve sakatlanma riskini azaltın.</p>
-                                <a href="#" class="btn">Devamını Oku</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+        <!-- Bu bölümü önceki kodda tanımlı değildi, gerekirse eklenebilir -->
 
         <!-- CTA Bölümü -->
         <section class="cta-section" data-aos="fade-up">
