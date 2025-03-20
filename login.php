@@ -6,8 +6,8 @@ session_set_cookie_params(3600); // Çerez süresi 1 saat
 session_start(); // Oturumu başlat
 
 $servername = "localhost";
-$username = "root"; // Varsayılan kullanıcı adı
-$password = ""; // Varsayılan şifre
+$username = "root";
+$password = "";
 $dbname = "fitness_db";
 
 // Veritabanı bağlantısı
@@ -24,14 +24,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = isset($_POST['password']) ? $_POST['password'] : '';
 
     // Kullanıcıyı bul (Hazırlıklı sorgu ile)
-    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
+    $stmt = $conn->prepare("SELECT password, is_admin, is_banned FROM users WHERE username = ?");
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
-        if (password_verify($password, $row['password'])) {
+        if ($row['is_banned']) {
+            $error = "Bu hesap yasaklanmıştır. Lütfen admin ile iletişime geçin.";
+        } elseif (password_verify($password, $row['password'])) {
             $_SESSION['username'] = $username; // Oturum başlat
             $_SESSION['is_admin'] = $row['is_admin']; // is_admin değerini oturuma ekle
             session_regenerate_id(true); // Oturum ID'sini yenile (güvenlik için)
@@ -55,200 +57,14 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitMate - Giriş Yap</title>
-    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- AOS Animasyon Kütüphanesi -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <!-- Google Fonts (Modern bir font için) -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome (Simgeler için) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Genel Stil */
-        html, body {
-            margin: 0;
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh; /* Sayfanın minimum yüksekliğini tam ekran yapar */
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .content {
-            flex: 1 0 auto; /* İçeriğin flex büyümesini sağlar */
-            padding-bottom: 60px;
-        }
-
-        footer {
-            flex-shrink: 0; /* Footer'ın küçülmesini engeller */
-            width: 100%;
-        }
-
-        /* Navbar */
-        .navbar {
-            background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            padding: 10px 0;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .navbar-logo {
-            height: 60px;
-            width: auto;
-            max-width: 250px;
-            transition: transform 0.3s ease;
-        }
-
-        .navbar-logo:hover {
-            transform: scale(1.05);
-        }
-
-        .navbar-brand {
-            padding: 5px 15px;
-            display: flex;
-            align-items: center;
-        }
-
-        .nav-link {
-            color: #fff !important;
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-
-        .nav-link:hover {
-            color: #00ddeb !important;
-        }
-
-        /* Giriş Formu */
-        .login-section {
-            padding: 60px 0;
-        }
-
-        .login-card {
-            border: none;
-            border-radius: 20px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            background: #fff;
-            padding: 30px;
-        }
-
-        .login-card h2 {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #1a3c34;
-            margin-bottom: 20px;
-        }
-
-        .alert {
-            border-radius: 10px;
-            font-size: 0.9rem;
-        }
-
-        .form-label {
-            font-weight: 500;
-            color: #1a3c34;
-        }
-
-        .form-control {
-            border-radius: 10px;
-            border: 1px solid #ced4da;
-            padding: 10px;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .form-control:focus {
-            border-color: #00ddeb;
-            box-shadow: 0 0 5px rgba(0, 221, 235, 0.3);
-            outline: none;
-        }
-
-        .btn-primary {
-            background: #00ddeb;
-            border: none;
-            padding: 12px 30px;
-            font-size: 1.1rem;
-            font-weight: 500;
-            border-radius: 50px;
-            transition: transform 0.3s ease, background 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            background: #00b7c2;
-            transform: translateY(-3px);
-        }
-
-        .text-center a {
-            color: #00ddeb;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .text-center a:hover {
-            text-decoration: underline;
-        }
-
-        /* Footer */
-        footer {
-            background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
-            color: white;
-            padding: 20px 0;
-            font-size: 0.9rem;
-        }
-
-        footer a {
-            color: #00ddeb;
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* Responsive Ayarlar */
-        @media (max-width: 768px) {
-            .navbar-logo {
-                height: 50px;
-                max-width: 200px;
-            }
-
-            .login-card h2 {
-                font-size: 1.8rem;
-            }
-
-            .login-section {
-                padding: 40px 0;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .navbar-logo {
-                height: 40px;
-                max-width: 150px;
-            }
-
-            .login-card {
-                padding: 20px;
-            }
-
-            .login-card h2 {
-                font-size: 1.5rem;
-            }
-
-            .login-section {
-                padding: 20px 0;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">
@@ -269,7 +85,8 @@ $conn->close();
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['username'])): ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
+                            <a class="nav-link" href="dashboard
+                            dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="dashboard.php">Dashboard</a>
@@ -290,7 +107,6 @@ $conn->close();
         </div>
     </nav>
 
-    <!-- Giriş Formu -->
     <div class="content">
         <div class="container login-section">
             <div class="row justify-content-center">
@@ -322,7 +138,6 @@ $conn->close();
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="text-center">
         <div class="container">
             <p class="mb-0">© 2025 FitMate. Tüm hakları saklıdır.</p>
@@ -330,32 +145,8 @@ $conn->close();
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- AOS Animasyon Kütüphanesi -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script>
-        // AOS Animasyonlarını Başlat
-        AOS.init({
-            once: false, // Animasyonlar her kaydırmada tekrar oynar
-            offset: 50, // Animasyonun tetiklenme mesafesini azaltır
-            duration: 1000 // Animasyon süresi
-        });
-
-        // Sayfanın yüklenmesi tamamlandığında AOS'u yenile
-        window.addEventListener('load', function() {
-            AOS.refresh();
-        });
-
-        // Sayfanın boyutları değiştiğinde AOS'u yenile
-        window.addEventListener('resize', function() {
-            AOS.refresh();
-        });
-
-        // Sayfayı kaydırdığında AOS'u yenile
-        window.addEventListener('scroll', function() {
-            AOS.refresh();
-        });
-    </script>
+    <script src="js/core.js"></script>
 </body>
 </html>

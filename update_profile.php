@@ -20,6 +20,8 @@ if ($conn->connect_error) {
     die("Bağlantı hatası: " . $conn->connect_error);
 }
 
+$is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1;
+
 // Kullanıcı bilgilerini al (hazırlıklı ifadelerle)
 $username = $_SESSION['username'];
 $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
@@ -113,182 +115,7 @@ $conn->close();
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <!-- Font Awesome (Simgeler için) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Genel Stil */
-        html, body {
-            margin: 0;
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .content {
-            flex: 1 0 auto;
-            padding-bottom: 60px;
-        }
-
-        footer {
-            flex-shrink: 0;
-            width: 100%;
-        }
-
-        /* Navbar */
-        .navbar {
-            background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            padding: 10px 0;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .navbar-logo {
-            height: 60px;
-            width: auto;
-            max-width: 250px;
-            transition: transform 0.3s ease;
-        }
-
-        .navbar-logo:hover {
-            transform: scale(1.05);
-        }
-
-        .navbar-brand {
-            padding: 5px 15px;
-            display: flex;
-            align-items: center;
-        }
-
-        .nav-link {
-            color: #fff !important;
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-
-        .nav-link:hover {
-            color: #00ddeb !important;
-        }
-
-        /* Profil Güncelleme Formu */
-        .update-section {
-            padding: 60px 0;
-        }
-
-        .update-card {
-            border: none;
-            border-radius: 20px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            background: #fff;
-            padding: 30px;
-        }
-
-        .update-card h2 {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #1a3c34;
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            font-weight: 500;
-            color: #1a3c34;
-        }
-
-        .form-control, .form-select {
-            border-radius: 10px;
-            border: 1px solid #ced4da;
-            padding: 10px;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: #00ddeb;
-            box-shadow: 0 0 5px rgba(0, 221, 235, 0.3);
-            outline: none;
-        }
-
-        .btn-success {
-            background: #00ddeb;
-            border: none;
-            padding: 12px 30px;
-            font-size: 1.1rem;
-            font-weight: 500;
-            border-radius: 50px;
-            transition: transform 0.3s ease, background 0.3s ease;
-        }
-
-        .btn-success:hover {
-            background: #00b7c2;
-            transform: translateY(-3px);
-        }
-
-        .text-center a {
-            color: #00ddeb;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .text-center a:hover {
-            text-decoration: underline;
-        }
-
-        /* Footer */
-        footer {
-            background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
-            color: white;
-            padding: 20px 0;
-            font-size: 0.9rem;
-        }
-
-        footer a {
-            color: #00ddeb;
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* Responsive Ayarlar */
-        @media (max-width: 768px) {
-            .navbar-logo {
-                height: 50px;
-                max-width: 200px;
-            }
-
-            .update-card h2 {
-                font-size: 1.8rem;
-            }
-
-            .update-section {
-                padding: 40px 0;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .navbar-logo {
-                height: 40px;
-                max-width: 150px;
-            }
-
-            .update-card {
-                padding: 20px;
-            }
-
-            .update-card h2 {
-                font-size: 1.5rem;
-            }
-
-            .update-section {
-                padding: 20px 0;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <!-- Navbar -->
@@ -308,6 +135,11 @@ $conn->close();
                     <li class="nav-item">
                         <a class="nav-link" href="dashboard.php">Dashboard</a>
                     </li>
+                    <?php if ($is_admin): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin.php">Admin Paneli</a>
+                        </li>
+                    <?php endif; ?>
                 </ul>
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['username'])): ?>
@@ -410,9 +242,9 @@ $conn->close();
                                         </label>
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-success w-100">Güncelle</button>
+                                <button type="submit" class="btn btn-green w-100">Güncelle</button>
                             </form>
-                            <p class="mt-3 text-center"><a href="dashboard.php">Geri Dön</a></p>
+                            <a href="dashboard.php" class="btn btn-red w-100 mt-3">Geri Dön</a>
                         </div>
                     </div>
                 </div>
@@ -428,29 +260,11 @@ $conn->close();
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
+    <!-- Harici JS Dosyaları -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- AOS Animasyon Kütüphanesi -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script>
-        // AOS Animasyonlarını Başlat
-        AOS.init({
-            once: false,
-            offset: 50,
-            duration: 1000
-        });
-
-        window.addEventListener('load', function() {
-            AOS.refresh();
-        });
-
-        window.addEventListener('resize', function() {
-            AOS.refresh();
-        });
-
-        window.addEventListener('scroll', function() {
-            AOS.refresh();
-        });
-    </script>
+    <script src="js/core.js"></script>
+</body>
+</html>
 </body>
 </html>

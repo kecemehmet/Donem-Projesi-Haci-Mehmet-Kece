@@ -79,98 +79,7 @@ $conn->close();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        html, body {
-            margin: 0;
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .content {
-            flex: 1 0 auto;
-            padding-bottom: 60px;
-        }
-
-        footer {
-            flex-shrink: 0;
-            width: 100%;
-        }
-
-        .navbar {
-            background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            padding: 10px 0;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .navbar-logo {
-            height: 60px;
-            width: auto;
-            max-width: 250px;
-            transition: transform 0.3s ease;
-        }
-
-        .navbar-logo:hover {
-            transform: scale(1.05);
-        }
-
-        .nav-link {
-            color: #fff !important;
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-
-        .nav-link:hover {
-            color: #00ddeb !important;
-        }
-
-        .admin-section {
-            padding: 40px 0;
-        }
-
-        .admin-card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            background: #fff;
-            padding: 20px;
-        }
-
-        footer {
-            background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
-            color: white;
-            padding: 20px 0;
-            font-size: 0.9rem;
-        }
-
-        footer a {
-            color: #00ddeb;
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            text-decoration: underline;
-        }
-
-        @media (max-width: 768px) {
-            .navbar-logo {
-                height: 50px;
-                max-width: 200px;
-            }
-
-            .admin-section {
-                padding: 20px 0;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <!-- Navbar -->
@@ -230,8 +139,8 @@ $conn->close();
                             <input type="checkbox" class="form-check-input" id="is_admin" name="is_admin" <?php echo $edit_user['is_admin'] ? 'checked' : ''; ?>>
                             <label class="form-check-label" for="is_admin">Admin mi?</label>
                         </div>
-                        <button type="submit" class="btn btn-primary">Kaydet</button>
-                        <a href="admin.php" class="btn btn-secondary">İptal</a>
+                        <button type="submit" class="btn btn-green w-100">Kaydet</button>
+                        <a href="admin.php" class="btn btn-red w-100 mt-3">Geri Dön</a>
                     </form>
                 </div>
             </div>
@@ -246,7 +155,9 @@ $conn->close();
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
+    <!-- Harici JS Dosyaları -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/core.js"></script>
+</body>
 </body>
 </html>

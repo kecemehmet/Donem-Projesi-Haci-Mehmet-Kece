@@ -1,11 +1,11 @@
 <?php
-error_reporting(E_ALL); // Tüm hataları göster
-ini_set('display_errors', 1); // Hataları ekranda göster
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $servername = "localhost";
-    $username = "root"; // Varsayılan kullanıcı adı
-    $password = ""; // Varsayılan şifre
+    $username = "root";
+    $password = "";
     $dbname = "fitness_db";
 
     // Veritabanı bağlantısı
@@ -17,37 +17,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Form verilerini al
+    $name = $_POST['name'];
     $username = $_POST['username'];
     $email = $_POST['email'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT); // Şifreyi hashle
-    $height = $_POST['height'];
-    $weight = $_POST['weight'];
-    $bmi = $weight / (($height / 100) ** 2); // BMI hesapla
+    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $height = floatval($_POST['height']);
+    $weight = floatval($_POST['weight']);
+    $bmi = $weight / (($height / 100) * ($height / 100));
     $fitness_goal = $_POST['fitness_goal'];
     $experience_level = $_POST['experience_level'];
     $preferred_exercises = $_POST['preferred_exercises'];
-    $workout_days = $_POST['workout_days'];
-    $workout_duration = $_POST['workout_duration'];
+    $workout_days = intval($_POST['workout_days']);
+    $workout_duration = intval($_POST['workout_duration']);
+    $target_weight = floatval($_POST['target_weight']);
+    $target_set_date = $_POST['target_set_date'];
 
-    // Kullanıcı adı ve e-posta kontrolü
-    $check_sql = "SELECT * FROM users WHERE username='$username' OR email='$email'";
-    $check_result = $conn->query($check_sql);
+    // E-posta ve kullanıcı adı kontrolü (yasaklı e-posta dahil)
+    $stmt = $conn->prepare("SELECT is_banned FROM users WHERE email = ? OR username = ?");
+    $stmt->bind_param("ss", $email, $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-    if ($check_result->num_rows > 0) {
-        // Kullanıcı adı veya e-posta zaten kullanılıyor
-        echo "<script>alert('Bu kullanıcı adı veya e-posta zaten kullanılıyor!'); window.location.href='register.html';</script>";
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        if ($row['is_banned']) {
+            echo "<script>alert('Bu e-posta adresi yasaklıdır. Başka bir e-posta kullanın!'); window.location.href='register.html';</script>";
+        } else {
+            echo "<script>alert('Bu kullanıcı adı veya e-posta zaten kullanılıyor!'); window.location.href='register.html';</script>";
+        }
     } else {
-        // Veritabanına ekle
-        $sql = "INSERT INTO users (username, password, email, height, weight, bmi, fitness_goal, experience_level, preferred_exercises, workout_days, workout_duration)
-                VALUES ('$username', '$password', '$email', $height, $weight, $bmi, '$fitness_goal', '$experience_level', '$preferred_exercises', $workout_days, $workout_duration)";
+        // Veritabanına ekle (hazırlıklı sorgu)
+        $stmt = $conn->prepare("INSERT INTO users (username, password, email, height, weight, bmi, fitness_goal, experience_level, preferred_exercises, workout_days, workout_duration, target_weight, target_set_date, name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssffssssiiids", $username, $password, $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $name);
 
-        if ($conn->query($sql) === TRUE) {
+        if ($stmt->execute()) {
             echo "<script>alert('Kayıt başarılı! BMI değeriniz: " . number_format($bmi, 2) . "'); window.location.href='index.php';</script>";
         } else {
-            echo "Hata: " . $sql . "<br>" . $conn->error;
+            echo "Hata: " . $stmt->error;
         }
     }
 
+    $stmt->close();
     $conn->close();
 }
 ?>

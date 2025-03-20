@@ -1,0 +1,640 @@
+/* Genel Stil */
+html, body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+.content {
+    flex: 1 0 auto;
+    padding-bottom: 60px;
+}
+
+footer {
+    flex-shrink: 0;
+    width: 100%;
+    background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
+    color: white;
+    padding: 20px 0;
+    font-size: 0.9rem;
+}
+
+footer a {
+    color: #00ddeb;
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* Navbar */
+.navbar {
+    background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    padding: 10px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.navbar-logo {
+    height: 60px;
+    width: auto;
+    max-width: 250px;
+    transition: transform 0.3s ease;
+}
+
+.navbar-logo:hover {
+    transform: scale(1.05);
+}
+
+.navbar-brand {
+    padding: 5px 15px;
+    display: flex;
+    align-items: center;
+}
+
+.nav-link {
+    color: #fff !important;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #00ddeb !important;
+}
+
+/* Ortak Form ve Buton Stilleri */
+.form-label {
+    font-weight: 500;
+    color: #1a3c34;
+}
+
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 1px solid #ced4da;
+    padding: 10px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #00ddeb;
+    box-shadow: 0 0 5px rgba(0, 221, 235, 0.3);
+    outline: none;
+}
+
+.btn-primary {
+    background: #00ddeb; /* Cyan tonu */
+    color: #fff !important; /* Metin her zaman beyaz, diğer stilleri geçersiz kılar */
+    border: none;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: 50px;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #00b7c2; /* Daha koyu cyan tonu */
+    color: #fff !important; /* Hover durumunda da beyaz */
+    transform: translateY(-3px);
+}
+
+.btn-green {
+    background: #28a745; /* Yeşil ton (Bootstrap btn-success rengine benzer) */
+    color: #fff !important; /* Metin beyaz */
+    border: none;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: 50px; /* Yuvarlak kenarlar */
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.btn-green:hover {
+    background: #218838; /* Daha koyu yeşil ton */
+    color: #fff !important; /* Hover'da da beyaz */
+    transform: translateY(-3px); /* Hafif yükselme efekti */
+}
+
+.btn-red {
+    background: #dc3545; /* Kırmızı ton (Bootstrap btn-danger rengine benzer) */
+    color: #fff !important; /* Metin beyaz */
+    border: none;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    border-radius: 50px; /* Yuvarlak kenarlar */
+    transition: transform 0.3s ease, background 0.3s ease;
+    text-decoration: none; /* Bağlantı için alt çizgiyi kaldır */
+    display: block; /* w-100 ile tam genişlik için */
+    text-align: center; /* Metni ortala */
+}
+
+.btn-red:hover {
+    background: #c82333; /* Daha koyu kırmızı ton */
+    color: #fff !important; /* Hover'da da beyaz */
+    transform: translateY(-3px); /* Hafif yükselme efekti */
+    text-decoration: none; /* Hover'da da alt çizgi olmasın */
+}
+
+.text-center a {
+    color: #00ddeb;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.text-center a:hover {
+    text-decoration: underline;
+}
+
+/* Register Sayfası */
+.register-section {
+    padding: 60px 0;
+}
+
+.register-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    padding: 30px;
+}
+
+.register-card h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a3c34;
+    margin-bottom: 20px;
+}
+
+/* Login Sayfası */
+.login-section {
+    padding: 60px 0;
+}
+
+.login-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    padding: 30px;
+}
+
+.login-card h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a3c34;
+    margin-bottom: 20px;
+}
+
+.alert {
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
+/* Dashboard Sayfası */
+.user-info-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    padding: 30px;
+    margin-bottom: 40px;
+}
+
+.user-info-card h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a3c34;
+    margin-bottom: 20px;
+}
+
+.user-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+}
+
+.info-item {
+    background: linear-gradient(135deg, #1a3c34 0%, #2a5d53 100%);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 15px;
+    font-size: 1rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.3s ease;
+}
+
+.info-item:hover {
+    transform: translateY(-5px);
+}
+
+.info-item i {
+    font-size: 1.2rem;
+}
+
+.workout-section {
+    padding: 40px 0;
+}
+
+.workout-section h4 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a3c34;
+    margin-bottom: 40px;
+}
+
+.exercise-card {
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: #fff;
+}
+
+.exercise-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.exercise-card img {
+    height: 200px;
+    object-fit: cover;
+}
+
+.exercise-card .card-body {
+    padding: 20px;
+}
+
+.exercise-card h5 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #1a3c34;
+}
+
+.exercise-card p {
+    color: #666;
+}
+
+/* Update Profile Sayfası */
+.update-section {
+    padding: 60px 0;
+}
+
+.update-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    padding: 30px;
+}
+
+.update-card h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a3c34;
+    margin-bottom: 20px;
+}
+
+/* Admin Sayfası */
+.admin-section {
+    padding: 40px 0;
+}
+
+.admin-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    padding: 20px;
+}
+
+.table {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table thead {
+    background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
+    color: #fff;
+}
+
+.btn-action {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    border-radius: 5px;
+}
+
+/* Index Sayfası (Anasayfa) */
+.hero-section {
+    background: url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438') no-repeat center center;
+    background-size: cover;
+    color: white;
+    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.7);
+    padding: 120px 0;
+    position: relative;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+.features-section {
+    padding: 60px 0;
+    background: #fff;
+}
+
+.feature-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    padding: 20px;
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+}
+
+.feature-card i {
+    font-size: 2.5rem;
+    color: #00ddeb;
+}
+
+.about-section {
+    padding: 60px 0;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.about-section img {
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    max-width: 100%;
+    height: auto;
+}
+
+.testimonials-section {
+    padding: 60px 0;
+    background: #fff;
+}
+
+.testimonial-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.testimonial-card:hover {
+    transform: translateY(-5px);
+}
+
+.testimonial-card img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 15px;
+}
+
+.testimonial-card p {
+    font-style: italic;
+    color: #1a3c34;
+}
+
+.testimonial-card h5 {
+    color: #1a3c34;
+    font-weight: 600;
+}
+
+.success-stories-section {
+    padding: 60px 0;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+}
+
+.success-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.success-card:hover {
+    transform: translateY(-5px);
+}
+
+.success-card i {
+    font-size: 2rem;
+    color: #00ddeb;
+}
+
+.success-card h5 {
+    color: #1a3c34;
+    font-weight: 600;
+}
+
+.cta-section {
+    padding: 60px 0;
+    background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
+    color: white;
+    text-align: center;
+}
+
+.cta-section h2 {
+    font-weight: 600;
+}
+
+/* Responsive Ayarlar */
+@media (max-width: 768px) {
+    .navbar-logo {
+        height: 50px;
+        max-width: 200px;
+    }
+
+    .register-card h2, .login-card h2, .user-info-card h2, .update-card h2 {
+        font-size: 1.8rem;
+    }
+
+    .register-section, .login-section, .update-section, .features-section, .about-section, .testimonials-section, .success-stories-section, .cta-section {
+        padding: 40px 0;
+    }
+
+    .hero-section {
+        padding: 80px 0;
+    }
+
+    .feature-card, .testimonial-card, .success-card {
+        margin-bottom: 20px;
+    }
+
+    .about-section img {
+        margin-bottom: 20px;
+    }
+
+    .workout-section h4 {
+        font-size: 1.8rem;
+    }
+
+    .info-item {
+        font-size: 0.9rem;
+        padding: 10px 15px;
+    }
+
+    .admin-section {
+        padding: 20px 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .navbar-logo {
+        height: 40px;
+        max-width: 150px;
+    }
+
+    .register-card, .login-card, .update-card {
+        padding: 20px;
+    }
+
+    .register-card h2, .login-card h2, .user-info-card h2, .update-card h2 {
+        font-size: 1.5rem;
+    }
+
+    .register-section, .login-section, .update-section, .features-section, .about-section, .testimonials-section, .success-stories-section, .cta-section {
+        padding: 20px 0;
+    }
+
+    .hero-section {
+        padding: 60px 0;
+    }
+
+    .hero-content h1 {
+        font-size: 2rem;
+    }
+
+    .user-info-card {
+        padding: 20px;
+    }
+
+    .info-item {
+        font-size: 0.8rem;
+        padding: 8px 12px;
+    }
+
+    .workout-section {
+        padding: 20px 0;
+    }
+}
+@media (max-width: 768px) {
+    .navbar-logo {
+        height: 50px;
+        max-width: 200px;
+    }
+
+    .register-card h2, .login-card h2, .user-info-card h2, .update-card h2 {
+        font-size: 1.8rem;
+    }
+
+    .register-section, .login-section, .update-section, .features-section, .about-section, .testimonials-section, .success-stories-section, .cta-section {
+        padding: 40px 0;
+    }
+
+    .hero-section {
+        padding: 80px 0;
+    }
+
+    .feature-card, .testimonial-card, .success-card {
+        margin-bottom: 20px;
+    }
+
+    .about-section img {
+        margin-bottom: 20px;
+    }
+
+    .workout-section h4 {
+        font-size: 1.8rem;
+    }
+
+    .info-item {
+        font-size: 0.9rem;
+        padding: 10px 15px;
+    }
+
+    .admin-section {
+        padding: 20px 0; /* Yeni eklenen satır */
+    }
+}
+
+.admin-card .badge {
+    font-size: 0.9rem;
+    padding: 5px 10px;
+}
+
+.btn-action {
+    margin-right: 5px; /* Butonlar arası boşluk */
+}
+
+.pagination .page-link {
+    color: #1a3c34;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #1a3c34;
+    border-color: #1a3c34;
+    color: white;
+}
+
+.admin-section .table th {
+    background: linear-gradient(90deg, #1a3c34 0%, #2a5d53 100%);
+    color: white;
+    font-weight: 600;
+}
+
+.admin-section .table td {
+    vertical-align: middle;
+}
+
+.admin-section .badge {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+}
+
+.admin-section .btn-action {
+    margin-right: 8px;
+    padding: 6px 12px;
+}
+
+.admin-section .table-success {
+    background-color: #d4edda !important; /* Hedefe ulaşanlar için açık yeşil */
+}
