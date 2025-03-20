@@ -1,9 +1,8 @@
 <?php
-// Oturum süresini uzat (oturum başlatılmadan önce yapılmalı)
-ini_set('session.gc_maxlifetime', 3600); // 1 saat
-session_set_cookie_params(3600); // Çerez süresi 1 saat
-
-session_start(); // Oturumu başlat
+// Oturum süresini uzat
+ini_set('session.gc_maxlifetime', 3600);
+session_set_cookie_params(3600);
+session_start();
 
 // Veritabanı bağlantı bilgileri
 $servername = "localhost";
@@ -13,25 +12,12 @@ $dbname = "fitness_db";
 
 // Veritabanı bağlantısı
 $conn = new mysqli($servername, $username, $password, $dbname);
-
 if ($conn->connect_error) {
     die("Bağlantı hatası: " . $conn->connect_error);
 }
 
-// Admin kontrolü (oturumdan al)
+// Admin kontrolü
 $is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1;
-
-// Hata ayıklama için veritabanından is_admin kontrolü
-if (isset($_SESSION['username'])) {
-    $stmt = $conn->prepare("SELECT is_admin FROM users WHERE username = ?");
-    $stmt->bind_param("s", $_SESSION['username']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-    }
-    $stmt->close();
-}
 
 // İlk 2 harfi gösterip geri kalanını gizleyen fonksiyon
 function maskString($string) {
@@ -94,51 +80,58 @@ $conn->close();
         <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
     </div>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">
-                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
-            </a>
+<!-- Navbar -->
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="index.php">
+            <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
+        </a>
+        <!-- Tema simgesi ve hamburger menü yan yana -->
+        <div class="d-flex align-items-center">
+            <button class="nav-link btn theme-toggle" id="theme-toggle" title="Tema Değiştir">
+                <i class="fas fa-moon"></i>
+            </button>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="index.php">Anasayfa</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php">Dashboard</a>
-                    </li>
-                    <?php if ($is_admin): ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="admin.php">Admin Paneli</a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-                <ul class="navbar-nav">
-                    <?php if (isset($_SESSION['username'])): ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logout.php">Çıkış Yap</a>
-                        </li>
-                    <?php else: ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="register.html">Kayıt Ol</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="login.php">Giriş Yap</a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            </div>
         </div>
-    </nav>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="index.php">Anasayfa</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="dashboard.php">Dashboard</a>
+                </li>
+                <?php if ($is_admin): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="admin.php">Admin Paneli</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+            <ul class="navbar-nav align-items-center">
+                <?php if (isset($_SESSION['username'])): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="logout.php">Çıkış Yap</a>
+                    </li>
+                <?php else: ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="register.html">Kayıt Ol</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="login.php">Giriş Yap</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+    </div>
+</nav>
 
-    <!-- İçerik -->
+    <!-- İçerik (Değişmeden kalabilir) -->
     <div class="content">
         <!-- Hero Section -->
         <section class="hero-section">
@@ -308,6 +301,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="js/core.js"></script>
+    <script src="js/theme.js"></script>
     <script>
         // AOS Başlatma
         AOS.init({
@@ -324,11 +318,8 @@ $conn->close();
                     loadingScreen.classList.add('hidden');
                     setTimeout(() => {
                         loadingScreen.style.display = 'none';
-                        console.log('Yükleme ekranı gizlendi ve kaldırıldı');
                     }, 500);
                 }, 500);
-            } else {
-                console.error('Yükleme ekranı bulunamadı');
             }
         });
     </script>

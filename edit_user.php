@@ -82,38 +82,42 @@ $conn->close();
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">
-                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
-            </a>
+<nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="index.php">
+            <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
+        </a>
+        <div class="d-flex align-items-center">
+            <button class="nav-link btn theme-toggle" id="theme-toggle" title="Tema Değiştir">
+                <i class="fas fa-moon"></i>
+            </button>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.php">Anasayfa</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="admin.php">Admin Paneli</a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Çıkış Yap</a>
-                    </li>
-                </ul>
-            </div>
         </div>
-    </nav>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.php">Anasayfa</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="dashboard.php">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="admin.php">Admin Paneli</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="logout.php">Çıkış Yap</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
 
     <!-- İçerik -->
     <div class="content">
@@ -158,6 +162,7 @@ $conn->close();
     <!-- Harici JS Dosyaları -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/core.js"></script>
+    <script src="js/theme.js"></script>
 </body>
 </body>
 </html>

@@ -227,5 +227,6 @@ $conn->close();
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>AOS.init();</script>
     <script src="js/core.js"></script>
+    <script src="js/theme.js"></script>
 </body>
 </html>

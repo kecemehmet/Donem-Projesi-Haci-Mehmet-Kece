@@ -30,7 +30,7 @@ if (!$user || $user['is_admin'] != 1) {
 // Kullanıcı yasaklama/yasak kaldırma
 if (isset($_GET['ban_id'])) {
     $ban_id = $_GET['ban_id'];
-    if ($ban_id != $user['id']) { // Admin kendini yasaklayamasın
+    if ($ban_id != $user['id']) {
         $stmt = $conn->prepare("UPDATE users SET is_banned = 1 WHERE id = ?");
         $stmt->bind_param("i", $ban_id);
         $stmt->execute();
@@ -59,7 +59,7 @@ if (isset($_GET['delete_id'])) {
     exit();
 }
 
-// Kullanıcıları al (is_banned sütunu eklendi)
+// Kullanıcıları al
 $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
 $filter_goal = isset($_GET['filter_goal']) ? $conn->real_escape_string($_GET['filter_goal']) : '';
 $search_query = "%$search%";
@@ -91,7 +91,7 @@ $conn->close();
     <title>FitMate - Admin Paneli</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome (Simgeler için) -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -109,9 +109,14 @@ $conn->close();
             <a class="navbar-brand" href="index.php">
                 <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <div class="d-flex align-items-center">
+                <button class="nav-link btn theme-toggle" id="theme-toggle" title="Tema Değiştir">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
@@ -228,7 +233,7 @@ $conn->close();
                                                 </span>
                                             </td>
                                             <td>
-                                                <a href="edit_user.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-action btn-sm"><i class="fas fa-edit"></i></a>
+                                                <a href="edit_user.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-action btn-sm" title="Detay"><i class="fas fa-info-circle"></i></a>
                                                 <a href="admin.php?delete_id=<?php echo $row['id']; ?>" class="btn btn-danger btn-action btn-sm" onclick="return confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?');"><i class="fas fa-trash"></i></a>
                                                 <?php if ($row['is_banned']): ?>
                                                     <a href="admin.php?unban_id=<?php echo $row['id']; ?>" class="btn btn-success btn-action btn-sm" onclick="return confirm('Bu kullanıcının yasağını kaldırmak istediğinizden emin misiniz?');"><i class="fas fa-lock-open"></i></a>
@@ -261,6 +266,7 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/core.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/theme.js"></script>
     <!-- Yükleme Ekranı Kontrolü -->
     <script>
         window.addEventListener('load', function() {

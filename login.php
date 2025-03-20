@@ -69,46 +69,50 @@ $conn->close();
         <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
     </div>
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">
-                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
-            </a>
+    <div class="container-fluid">
+        <a class="navbar-brand" href="index.php">
+            <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
+        </a>
+        <div class="d-flex align-items-center">
+            <button class="nav-link btn theme-toggle" id="theme-toggle" title="Tema Değiştir">
+                <i class="fas fa-moon"></i>
+            </button>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+        </div>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.php">Anasayfa</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="dashboard.php">Dashboard</a>
+                </li>
+            </ul>
+            <ul class="navbar-nav">
+                <?php if (isset($_SESSION['username'])): ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">Anasayfa</a>
+                        <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="dashboard.php">Dashboard</a>
                     </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <?php if (isset($_SESSION['username'])): ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="dashboard
-                            dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">Dashboard</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logout.php">Çıkış Yap</a>
-                        </li>
-                    <?php else: ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="register.html">Kayıt Ol</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="login.php">Giriş Yap</a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            </div>
+                    <li class="nav-item">
+                        <a class="nav-link" href="logout.php">Çıkış Yap</a>
+                    </li>
+                <?php else: ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="register.html">Kayıt Ol</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="login.php">Giriş Yap</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
         </div>
-    </nav>
+    </div>
+</nav>
 
     <div class="content">
         <div class="container login-section">
@@ -151,5 +155,6 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="js/core.js"></script>
+    <script src="js/theme.js"></script>
 </body>
 </html>

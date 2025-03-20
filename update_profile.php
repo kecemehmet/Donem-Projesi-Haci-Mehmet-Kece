@@ -61,7 +61,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = $_POST['email'];
     $height = $_POST['height'];
     $weight = $_POST['weight'];
-    $bmi = $weight / (($height / 100) ** 2); // Yeni BMI hesapla
     $fitness_goal = $_POST['fitness_goal'];
     $experience_level = $_POST['experience_level'];
     $preferred_exercises = $_POST['preferred_exercises'];
@@ -69,55 +68,67 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $workout_duration = $_POST['workout_duration'];
     $target_weight = isset($_POST['target_weight']) && $_POST['target_weight'] !== '' ? $_POST['target_weight'] : null;
 
-    // Başarı hikayelerinde görünürlük tercihleri
-    $show_name_in_success = isset($_POST['show_name_in_success']) ? 1 : 0;
-    $show_username_in_success = isset($_POST['show_username_in_success']) ? 1 : 0;
-
-    // Hedef kilo belirlenmişse ve daha önce bir tarih yoksa, target_set_date'i güncelle
-    if ($target_weight !== null && $target_set_date === null) {
-        $target_set_date = date("Y-m-d"); // Bugünün tarihi
-    } elseif ($target_weight === null) {
-        $target_set_date = null; // Hedef kilo silinirse tarihi de sıfırla
-    }
-
-    // Mevcut kilo hedef kiloya eşitse ve daha önce ulaşılmadıysa, target_achieved_date'i güncelle
-    if ($target_weight !== null && $weight == $target_weight && $target_achieved_date === null) {
-        $target_achieved_date = date("Y-m-d"); // Bugünün tarihi
-    } elseif ($weight != $target_weight) {
-        $target_achieved_date = null; // Hedef kilodan sapılırsa tarihi sıfırla
-    }
-
-    // Veritabanını güncelle
-    $update_stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, height = ?, weight = ?, bmi = ?, fitness_goal = ?, experience_level = ?, preferred_exercises = ?, workout_days = ?, workout_duration = ?, target_weight = ?, target_set_date = ?, target_achieved_date = ?, show_name_in_success = ?, show_username_in_success = ? WHERE username = ?");
-    $update_stmt->bind_param("ssdddsssiidssiis", $name, $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $target_achieved_date, $show_name_in_success, $show_username_in_success, $username);
-
-    if ($update_stmt->execute()) {
-        $message = "Profil başarıyla güncellendi!";
-        $message_type = "success";
-        // Güncellenen bilgileri tekrar yükle
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $name = $row['name'];
-        $email = $row['email'];
-        $height = $row['height'];
-        $weight = $row['weight'];
-        $bmi = $row['bmi'];
-        $fitness_goal = $row['fitness_goal'];
-        $experience_level = $row['experience_level'];
-        $preferred_exercises = $row['preferred_exercises'];
-        $workout_days = $row['workout_days'];
-        $workout_duration = $row['workout_duration'];
-        $target_weight = $row['target_weight'];
-        $target_set_date = $row['target_set_date'];
-        $target_achieved_date = $row['target_achieved_date'];
-        $show_name_in_success = $row['show_name_in_success'];
-        $show_username_in_success = $row['show_username_in_success'];
-    } else {
-        $message = "Hata: " . $conn->error;
+    // Kilo ve hedef kilo doğrulama
+    if ($weight < 40 || $weight > 150) {
+        $message = "Kilo 40 kg ile 150 kg arasında olmalıdır!";
         $message_type = "danger";
+    } elseif ($target_weight !== null && ($target_weight < 40 || $target_weight > 150)) {
+        $message = "Hedef kilo 40 kg ile 150 kg arasında olmalıdır!";
+        $message_type = "danger";
+    } else {
+        // BMI hesaplama ve diğer işlemler
+        $bmi = $weight / (($height / 100) ** 2); // Yeni BMI hesapla
+
+        // Başarı hikayelerinde görünürlük tercihleri
+        $show_name_in_success = isset($_POST['show_name_in_success']) ? 1 : 0;
+        $show_username_in_success = isset($_POST['show_username_in_success']) ? 1 : 0;
+
+        // Hedef kilo belirlenmişse ve daha önce bir tarih yoksa, target_set_date'i güncelle
+        if ($target_weight !== null && $target_set_date === null) {
+            $target_set_date = date("Y-m-d"); // Bugünün tarihi
+        } elseif ($target_weight === null) {
+            $target_set_date = null; // Hedef kilo silinirse tarihi de sıfırla
+        }
+
+        // Mevcut kilo hedef kiloya eşitse ve daha önce ulaşılmadıysa, target_achieved_date'i güncelle
+        if ($target_weight !== null && $weight == $target_weight && $target_achieved_date === null) {
+            $target_achieved_date = date("Y-m-d"); // Bugünün tarihi
+        } elseif ($weight != $target_weight) {
+            $target_achieved_date = null; // Hedef kilodan sapılırsa tarihi sıfırla
+        }
+
+        // Veritabanını güncelle
+        $update_stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, height = ?, weight = ?, bmi = ?, fitness_goal = ?, experience_level = ?, preferred_exercises = ?, workout_days = ?, workout_duration = ?, target_weight = ?, target_set_date = ?, target_achieved_date = ?, show_name_in_success = ?, show_username_in_success = ? WHERE username = ?");
+        $update_stmt->bind_param("ssdddsssiidssiis", $name, $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $target_achieved_date, $show_name_in_success, $show_username_in_success, $username);
+
+        if ($update_stmt->execute()) {
+            $message = "Profil başarıyla güncellendi!";
+            $message_type = "success";
+            // Güncellenen bilgileri tekrar yükle
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            $name = $row['name'];
+            $email = $row['email'];
+            $height = $row['height'];
+            $weight = $row['weight'];
+            $bmi = $row['bmi'];
+            $fitness_goal = $row['fitness_goal'];
+            $experience_level = $row['experience_level'];
+            $preferred_exercises = $row['preferred_exercises'];
+            $workout_days = $row['workout_days'];
+            $workout_duration = $row['workout_duration'];
+            $target_weight = $row['target_weight'];
+            $target_set_date = $row['target_set_date'];
+            $target_achieved_date = $row['target_achieved_date'];
+            $show_name_in_success = $row['show_name_in_success'];
+            $show_username_in_success = $row['show_username_in_success'];
+        } else {
+            $message = "Hata: " . $conn->error;
+            $message_type = "danger";
+        }
+        $update_stmt->close();
     }
-    $update_stmt->close();
 }
 
 $stmt->close();
@@ -141,54 +152,60 @@ $conn->close();
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Tema JS -->
+    <script src="js/theme.js"></script>
 </head>
+
 <body>
-    <div id="loading-screen">
-        <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
-    </div>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">
-                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="index.php">
+            <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="index.php">Anasayfa</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="dashboard.php">Dashboard</a>
+                </li>
+                <?php if ($is_admin): ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.php">Anasayfa</a>
+                        <a class="nav-link" href="admin.php">Admin Paneli</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+            <ul class="navbar-nav align-items-center">
+                <?php if (isset($_SESSION['username'])): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php">Dashboard</a>
+                        <a class="nav-link" href="logout.php">Çıkış Yap</a>
                     </li>
-                    <?php if ($is_admin): ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="admin.php">Admin Paneli</a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-                <ul class="navbar-nav">
-                    <?php if (isset($_SESSION['username'])): ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="logout.php">Çıkış Yap</a>
-                        </li>
-                    <?php else: ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="register.html">Kayıt Ol</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="login.php">Giriş Yap</a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            </div>
+                    <!-- Tema simgesi "Çıkış Yap" bağlantısının sağına eklendi -->
+                    <li class="nav-item">
+                        <button class="nav-link btn" id="theme-toggle" title="Tema Değiştir">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </li>
+                <?php else: ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="register.html">Kayıt Ol</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="login.php">Giriş Yap</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
         </div>
-    </nav>
+    </div>
+</nav>
 
     <!-- Profil Güncelleme Formu -->
     <div class="content">
@@ -208,7 +225,7 @@ $conn->close();
         </div>
     </div>
 <?php endif; ?>
-                            <form action="update_profile.php" method="POST">
+                            <form action="update_profile.php" method="POST" novalidate>
                                 <!-- Yeni eklenen isim alanı -->
                                 <div class="mb-3">
                                     <label for="name" class="form-label">Adınız</label>
@@ -224,11 +241,11 @@ $conn->close();
                                 </div>
                                 <div class="mb-3">
                                     <label for="weight" class="form-label">Kilo (kg)</label>
-                                    <input type="number" class="form-control" id="weight" name="weight" step="0.1" value="<?php echo htmlspecialchars($weight); ?>" required>
+                                    <input type="number" class="form-control" id="weight" name="weight" step="0.1" min="40" max="150" value="<?php echo htmlspecialchars($weight); ?>" required>
                                 </div>
                                 <div class="mb-3">
                                     <label for="target_weight" class="form-label">Hedef Kilo (kg)</label>
-                                    <input type="number" class="form-control" id="target_weight" name="target_weight" step="0.1" value="<?php echo htmlspecialchars($target_weight ? $target_weight : ''); ?>" placeholder="Hedef kilonuzu girin (isteğe bağlı)">
+                                    <input type="number" class="form-control" id="target_weight" name="target_weight" step="0.1" min="40" max="150" value="<?php echo htmlspecialchars($target_weight ? $target_weight : ''); ?>" placeholder="Hedef kilonuzu girin (isteğe bağlı)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="fitness_goal" class="form-label">Fitness Hedefiniz</label>
@@ -298,8 +315,8 @@ $conn->close();
         </div>
     </footer>
 
-    <!-- Harici JS Dosyaları -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Harici JS Dosyaları -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="js/core.js"></script>
     <script>
@@ -333,6 +350,6 @@ $conn->close();
             }, 5000); // 5 saniye sonra kapanır
         }
     });
-</script>
+    </script>
 </body>
 </html>
