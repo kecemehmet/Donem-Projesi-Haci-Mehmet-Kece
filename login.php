@@ -65,6 +65,9 @@ $conn->close();
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<div id="loading-screen">
+        <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
+    </div>
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="index.php">

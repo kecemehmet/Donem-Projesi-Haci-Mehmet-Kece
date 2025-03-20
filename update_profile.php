@@ -22,6 +22,10 @@ if ($conn->connect_error) {
 
 $is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1;
 
+// Mesaj değişkeni tanımla
+$message = '';
+$message_type = ''; // 'success' veya 'danger' olarak kullanılacak
+
 // Kullanıcı bilgilerini al (hazırlıklı ifadelerle)
 $username = $_SESSION['username'];
 $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
@@ -47,8 +51,8 @@ if ($result->num_rows > 0) {
     $show_name_in_success = $row['show_name_in_success'];
     $show_username_in_success = $row['show_username_in_success'];
 } else {
-    echo "Kullanıcı bulunamadı!";
-    exit();
+    $message = "Kullanıcı bulunamadı!";
+    $message_type = "danger";
 }
 
 // Form gönderildiğinde verileri güncelle (hazırlıklı ifadelerle)
@@ -83,14 +87,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $target_achieved_date = null; // Hedef kilodan sapılırsa tarihi sıfırla
     }
 
-    // Tip tanımını düzelttik: 'ssdddsssiidssiis' (16 değişken için)
+    // Veritabanını güncelle
     $update_stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, height = ?, weight = ?, bmi = ?, fitness_goal = ?, experience_level = ?, preferred_exercises = ?, workout_days = ?, workout_duration = ?, target_weight = ?, target_set_date = ?, target_achieved_date = ?, show_name_in_success = ?, show_username_in_success = ? WHERE username = ?");
     $update_stmt->bind_param("ssdddsssiidssiis", $name, $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $target_achieved_date, $show_name_in_success, $show_username_in_success, $username);
 
     if ($update_stmt->execute()) {
-        echo "<script>alert('Profil başarıyla güncellendi!'); window.location.href='dashboard.php';</script>";
+        $message = "Profil başarıyla güncellendi!";
+        $message_type = "success";
+        // Güncellenen bilgileri tekrar yükle
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $name = $row['name'];
+        $email = $row['email'];
+        $height = $row['height'];
+        $weight = $row['weight'];
+        $bmi = $row['bmi'];
+        $fitness_goal = $row['fitness_goal'];
+        $experience_level = $row['experience_level'];
+        $preferred_exercises = $row['preferred_exercises'];
+        $workout_days = $row['workout_days'];
+        $workout_duration = $row['workout_duration'];
+        $target_weight = $row['target_weight'];
+        $target_set_date = $row['target_set_date'];
+        $target_achieved_date = $row['target_achieved_date'];
+        $show_name_in_success = $row['show_name_in_success'];
+        $show_username_in_success = $row['show_username_in_success'];
     } else {
-        echo "Hata: " . $conn->error;
+        $message = "Hata: " . $conn->error;
+        $message_type = "danger";
     }
     $update_stmt->close();
 }
@@ -111,13 +136,16 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- AOS Animasyon Kütüphanesi -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <!-- Google Fonts (Modern bir font için) -->
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome (Simgeler için) -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <div id="loading-screen">
+        <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
+    </div>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
@@ -144,7 +172,7 @@ $conn->close();
                 <ul class="navbar-nav">
                     <?php if (isset($_SESSION['username'])): ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo $_SESSION['username']; ?></a>
+                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="logout.php">Çıkış Yap</a>
@@ -170,6 +198,16 @@ $conn->close();
                     <div class="card update-card" data-aos="fade-up" data-aos-duration="1000">
                         <div class="card-body">
                             <h2 class="text-center">Profil Güncelle</h2>
+<!-- Mesaj Alanı -->
+<?php if ($message): ?>
+    <div class="alert alert-<?php echo htmlspecialchars($message_type); ?> alert-dismissible fade show" role="alert" id="update-message">
+        <?php echo htmlspecialchars($message); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="progress mt-2">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-<?php echo htmlspecialchars($message_type); ?>" role="progressbar" style="width: 100%;" id="message-timer"></div>
+        </div>
+    </div>
+<?php endif; ?>
                             <form action="update_profile.php" method="POST">
                                 <!-- Yeni eklenen isim alanı -->
                                 <div class="mb-3">
@@ -264,7 +302,37 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="js/core.js"></script>
-</body>
-</html>
+    <script>
+    // AOS Başlatma
+    AOS.init({
+        once: false,
+        offset: 50,
+        duration: 1000
+    });
+
+    // Yükleme Ekranı Kontrolü
+    window.addEventListener('load', function() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            setTimeout(() => {
+                loadingScreen.classList.add('hidden');
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 500);
+            }, 500);
+        }
+
+        // Mesajın otomatik kapanması ve animasyon
+        const message = document.getElementById('update-message');
+        if (message) {
+            setTimeout(() => {
+                message.classList.remove('show');
+                setTimeout(() => {
+                    message.remove(); // Mesajı DOM'dan tamamen kaldır
+                }, 500); // Fade out animasyonu için süre
+            }, 5000); // 5 saniye sonra kapanır
+        }
+    });
+</script>
 </body>
 </html>

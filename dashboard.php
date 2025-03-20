@@ -145,6 +145,10 @@ $weekly_program = createWorkoutProgram($bmi, $fitness_goal, $experience_level, $
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<!-- Loading Screen -->
+<div id="loading-screen">
+        <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
+    </div>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">

@@ -21,8 +21,7 @@ if ($conn->connect_error) {
 // Admin kontrolü (oturumdan al)
 $is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1;
 
-// Hata ayıklama için
-// Veritabanından is_admin değerini tekrar kontrol et
+// Hata ayıklama için veritabanından is_admin kontrolü
 if (isset($_SESSION['username'])) {
     $stmt = $conn->prepare("SELECT is_admin FROM users WHERE username = ?");
     $stmt->bind_param("s", $_SESSION['username']);
@@ -34,7 +33,7 @@ if (isset($_SESSION['username'])) {
     $stmt->close();
 }
 
-// İlk 2 harfi gösterip geri kalanını gizleyen fonksiyon (dosyanın başında tanımlıyoruz)
+// İlk 2 harfi gösterip geri kalanını gizleyen fonksiyon
 function maskString($string) {
     if (strlen($string) <= 2) {
         return $string;
@@ -54,25 +53,22 @@ $success_result = $conn->query($success_query);
 
 if ($success_result->num_rows > 0) {
     while ($row = $success_result->fetch_assoc()) {
-        // Hedef tarih farkını hesapla (sadece gösterim için, koşul olarak kullanmıyoruz)
         $set_date = new DateTime($row['target_set_date']);
         $achieved_date = new DateTime($row['target_achieved_date']);
         $interval = $set_date->diff($achieved_date);
         $days = $interval->days;
 
-        // Tarih farkı koşulunu kaldırıldı
         $success_stories[] = [
             'id' => $row['id'],
             'username' => $row['username'],
             'name' => $row['name'],
             'target_set_date' => $row['target_set_date'],
             'target_achieved_date' => $row['target_achieved_date'],
-            'days' => $days, // Gün farkını gösterim için eklendi
+            'days' => $days,
             'show_name_in_success' => $row['show_name_in_success'],
             'show_username_in_success' => $row['show_username_in_success']
         ];
     }
-    // En fazla 5 kullanıcı göster
     $success_stories = array_slice($success_stories, 0, 5);
 }
 
@@ -85,19 +81,19 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitMate - Anasayfa</title>
-    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- AOS Animasyon Kütüphanesi -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
+    </div>
+
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
@@ -253,7 +249,6 @@ $conn->close();
                     <?php if (count($success_stories) > 0): ?>
                         <?php foreach ($success_stories as $story): ?>
                             <?php
-                            // Kullanıcı görünürlüğünü belirle
                             if ($story['show_name_in_success'] && $story['show_username_in_success'] && $story['name']) {
                                 $display_name = htmlspecialchars($story['name'] . " (" . $story['username'] . ")");
                             } elseif ($story['show_name_in_success'] && $story['name']) {
@@ -287,9 +282,6 @@ $conn->close();
             </div>
         </section>
 
-        <!-- Blog/İpuçları Bölümü -->
-        <!-- Bu bölümü önceki kodda tanımlı değildi, gerekirse eklenebilir -->
-
         <!-- CTA Bölümü -->
         <section class="cta-section" data-aos="fade-up">
             <div class="container">
@@ -316,6 +308,29 @@ $conn->close();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="js/core.js"></script>
-</body>
+    <script>
+        // AOS Başlatma
+        AOS.init({
+            once: false,
+            offset: 50,
+            duration: 1000
+        });
+
+        // Yükleme Ekranı Kontrolü
+        window.addEventListener('load', function() {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                setTimeout(() => {
+                    loadingScreen.classList.add('hidden');
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                        console.log('Yükleme ekranı gizlendi ve kaldırıldı');
+                    }, 500);
+                }, 500);
+            } else {
+                console.error('Yükleme ekranı bulunamadı');
+            }
+        });
+    </script>
 </body>
 </html>
