@@ -1,12 +1,14 @@
 // AOS Animasyonlarını Başlat
+console.log("AOS başlatılıyor...");
 AOS.init({
-    once: false, // Animasyonlar her kaydırmada tekrar oynar
-    offset: 50,  // Animasyonun tetiklenme mesafesini azaltır
-    duration: 1000 // Animasyon süresi
+    once: false,
+    offset: 50,
+    duration: 1000
 });
 
 // Sayfanın yüklenmesi tamamlandığında AOS'u yenile
 window.addEventListener('load', function() {
+    console.log("Sayfa yüklendi, AOS yenileniyor...");
     AOS.refresh();
 });
 
@@ -20,25 +22,28 @@ window.addEventListener('scroll', function() {
     AOS.refresh();
 });
 
-// Alert time
+// Alert zamanlayıcı
 setTimeout(() => {
     const alert = document.querySelector('.alert');
-    if (alert) alert.classList.remove('show');
-}, 5000); // 5 saniye sonra kapanır
+    if (alert) {
+        console.log("Alert 5 saniye sonra kapanıyor...");
+        alert.classList.remove('show');
+    }
+}, 5000);
 
+// Yükleme ekranı kontrolü
 window.addEventListener('load', function() {
     const loadingScreen = document.getElementById('loading-screen');
     if (loadingScreen) {
-        // 0.5 saniye sonra gizle
+        console.log("Yükleme ekranı bulundu, gizleniyor...");
         setTimeout(() => {
             loadingScreen.classList.add('hidden');
-            // Opacity geçişi tamamlandıktan sonra tamamen kaldır
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
-                console.log('Yükleme ekranı gizlendi ve kaldırıldı'); // Hata ayıklama için
-            }, 500); // CSS transition süresiyle eşleşiyor
-        }, 500); // İlk gecikme
+                console.log('Yükleme ekranı gizlendi ve kaldırıldı');
+            }, 500);
+        }, 500);
     } else {
-        console.error('Yükleme ekranı bulunamadı'); // Hata ayıklama için
+        console.error('Yükleme ekranı bulunamadı');
     }
 });

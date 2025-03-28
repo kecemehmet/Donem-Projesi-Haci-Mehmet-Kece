@@ -1,5 +1,5 @@
 <?php
-session_start(); // Oturumu başlat
+session_start();
 
 // Kullanıcı giriş yapmış mı kontrol et
 if (!isset($_SESSION['username'])) {
@@ -15,27 +15,23 @@ $dbname = "fitness_db";
 
 // Veritabanı bağlantısı
 $conn = new mysqli($servername, $username, $password, $dbname);
-
 if ($conn->connect_error) {
     die("Bağlantı hatası: " . $conn->connect_error);
 }
 
 $is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1;
-
-// Mesaj değişkeni tanımla
 $message = '';
-$message_type = ''; // 'success' veya 'danger' olarak kullanılacak
+$message_type = '';
 
-// Kullanıcı bilgilerini al (hazırlıklı ifadelerle)
-$username = $_SESSION['username'];
+// Kullanıcı bilgilerini al
 $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
-$stmt->bind_param("s", $username);
+$stmt->bind_param("s", $_SESSION['username']);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
     $row = $result->fetch_assoc();
-    $name = $row['name'];
+    $name = $row['name'] ?? '';
     $email = $row['email'];
     $height = $row['height'];
     $weight = $row['weight'];
@@ -50,12 +46,18 @@ if ($result->num_rows > 0) {
     $target_achieved_date = $row['target_achieved_date'];
     $show_name_in_success = $row['show_name_in_success'];
     $show_username_in_success = $row['show_username_in_success'];
+    $profile_picture = $row['profile_picture'] ?? 'images/default_profile.png';
 } else {
     $message = "Kullanıcı bulunamadı!";
     $message_type = "danger";
 }
+$stmt->close();
 
-// Form gönderildiğinde verileri güncelle (hazırlıklı ifadelerle)
+// İstatistik: İlerleme yüzdesi hesaplama
+$progress_percentage = ($target_weight && $weight) ? 
+    round((abs($weight - $target_weight) / ($weight > $target_weight ? $weight : $target_weight)) * 100, 2) : 0;
+
+// Form gönderildiğinde
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $name = $_POST['name'];
     $email = $_POST['email'];
@@ -64,65 +66,70 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $fitness_goal = $_POST['fitness_goal'];
     $experience_level = $_POST['experience_level'];
     $preferred_exercises = $_POST['preferred_exercises'];
-    $workout_days = $_POST['workout_days'];
+    $workout_days = (int)$_POST['workout_days'];
     $workout_duration = $_POST['workout_duration'];
-    $target_weight = isset($_POST['target_weight']) && $_POST['target_weight'] !== '' ? $_POST['target_weight'] : null;
+    $target_weight = $_POST['target_weight'] !== '' ? $_POST['target_weight'] : null;
+    $show_name_in_success = isset($_POST['show_name_in_success']) ? 1 : 0;
+    $show_username_in_success = isset($_POST['show_username_in_success']) ? 1 : 0;
 
-    // Kilo ve hedef kilo doğrulama
+    // Profil resmi yükleme
+    $profile_picture_updated = $profile_picture;
+    if (isset($_FILES["profile_picture"]) && $_FILES["profile_picture"]["error"] == 0) {
+        $target_dir = "uploads/";
+        if (!file_exists($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        $target_file = $target_dir . basename($_FILES["profile_picture"]["name"]);
+        $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+        $new_file_name = $target_dir . $_SESSION['username'] . "_profile." . $imageFileType;
+
+        $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+        if (!in_array($imageFileType, $allowed_types)) {
+            $message = "Yalnızca JPG, JPEG, PNG ve GIF dosyaları kabul edilir.";
+            $message_type = "danger";
+        } elseif ($_FILES["profile_picture"]["size"] > 5000000) {
+            $message = "Dosya boyutu 5MB'ı aşamaz.";
+            $message_type = "danger";
+        } elseif (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $new_file_name)) {
+            $profile_picture_updated = $new_file_name;
+        } else {
+            $message = "Profil resmi yüklenirken bir hata oluştu.";
+            $message_type = "danger";
+        }
+    }
+
+    // Tek kullanıcı güncelleme
     if ($weight < 40 || $weight > 150) {
         $message = "Kilo 40 kg ile 150 kg arasında olmalıdır!";
         $message_type = "danger";
     } elseif ($target_weight !== null && ($target_weight < 40 || $target_weight > 150)) {
         $message = "Hedef kilo 40 kg ile 150 kg arasında olmalıdır!";
         $message_type = "danger";
+    } elseif ($workout_days <= 0) {
+        $message = "Antrenman gün sayısı 0 veya negatif olamaz!";
+        $message_type = "danger";
+    } elseif ($workout_days > 7) {
+        $message = "Antrenman gün sayısı 7'den büyük olamaz!";
+        $message_type = "danger";
     } else {
-        // BMI hesaplama ve diğer işlemler
-        $bmi = $weight / (($height / 100) ** 2); // Yeni BMI hesapla
-
-        // Başarı hikayelerinde görünürlük tercihleri
-        $show_name_in_success = isset($_POST['show_name_in_success']) ? 1 : 0;
-        $show_username_in_success = isset($_POST['show_username_in_success']) ? 1 : 0;
-
-        // Hedef kilo belirlenmişse ve daha önce bir tarih yoksa, target_set_date'i güncelle
+        $bmi = $weight / (($height / 100) ** 2);
         if ($target_weight !== null && $target_set_date === null) {
-            $target_set_date = date("Y-m-d"); // Bugünün tarihi
+            $target_set_date = date("Y-m-d");
         } elseif ($target_weight === null) {
-            $target_set_date = null; // Hedef kilo silinirse tarihi de sıfırla
+            $target_set_date = null;
         }
-
-        // Mevcut kilo hedef kiloya eşitse ve daha önce ulaşılmadıysa, target_achieved_date'i güncelle
         if ($target_weight !== null && $weight == $target_weight && $target_achieved_date === null) {
-            $target_achieved_date = date("Y-m-d"); // Bugünün tarihi
+            $target_achieved_date = date("Y-m-d");
         } elseif ($weight != $target_weight) {
-            $target_achieved_date = null; // Hedef kilodan sapılırsa tarihi sıfırla
+            $target_achieved_date = null;
         }
 
-        // Veritabanını güncelle
-        $update_stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, height = ?, weight = ?, bmi = ?, fitness_goal = ?, experience_level = ?, preferred_exercises = ?, workout_days = ?, workout_duration = ?, target_weight = ?, target_set_date = ?, target_achieved_date = ?, show_name_in_success = ?, show_username_in_success = ? WHERE username = ?");
-        $update_stmt->bind_param("ssdddsssiidssiis", $name, $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $target_achieved_date, $show_name_in_success, $show_username_in_success, $username);
-
+        $update_stmt = $conn->prepare("UPDATE users SET name = ?, email = ?, height = ?, weight = ?, bmi = ?, fitness_goal = ?, experience_level = ?, preferred_exercises = ?, workout_days = ?, workout_duration = ?, target_weight = ?, target_set_date = ?, target_achieved_date = ?, show_name_in_success = ?, show_username_in_success = ?, profile_picture = ? WHERE username = ?");
+        $update_stmt->bind_param("ssdddsssiidssiiss", $name, $email, $height, $weight, $bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration, $target_weight, $target_set_date, $target_achieved_date, $show_name_in_success, $show_username_in_success, $profile_picture_updated, $_SESSION['username']);
+        
         if ($update_stmt->execute()) {
-            $message = "Profil başarıyla güncellendi!";
+            $message = "Profil güncellendi!";
             $message_type = "success";
-            // Güncellenen bilgileri tekrar yükle
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $row = $result->fetch_assoc();
-            $name = $row['name'];
-            $email = $row['email'];
-            $height = $row['height'];
-            $weight = $row['weight'];
-            $bmi = $row['bmi'];
-            $fitness_goal = $row['fitness_goal'];
-            $experience_level = $row['experience_level'];
-            $preferred_exercises = $row['preferred_exercises'];
-            $workout_days = $row['workout_days'];
-            $workout_duration = $row['workout_duration'];
-            $target_weight = $row['target_weight'];
-            $target_set_date = $row['target_set_date'];
-            $target_achieved_date = $row['target_achieved_date'];
-            $show_name_in_success = $row['show_name_in_success'];
-            $show_username_in_success = $row['show_username_in_success'];
         } else {
             $message = "Hata: " . $conn->error;
             $message_type = "danger";
@@ -131,7 +138,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-$stmt->close();
 $conn->close();
 ?>
 
@@ -141,95 +147,131 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitMate - Profil Güncelle</title>
-    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- AOS Animasyon Kütüphanesi -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Tema JS -->
-    <script src="js/theme.js"></script>
+    <style>
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: #fff;
+            opacity: 0.9;
+            z-index: 1050;
+            min-width: 250px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.5s ease-out;
+        }
+        .custom-alert-success { background-color: rgba(40, 167, 69, 0.9); }
+        .custom-alert-danger { background-color: rgba(220, 53, 69, 0.9); }
+        .custom-progress {
+            height: 4px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .custom-progress-bar {
+            height: 100%;
+            background-color: #fff;
+            animation: progress 5s linear forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 0.9; }
+        }
+        @keyframes progress {
+            from { width: 100%; }
+            to { width: 0; }
+        }
+    </style>
 </head>
-
 <body>
+    <div id="loading-screen">
+        <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
+    </div>
+
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="index.php">
-            <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.php">Anasayfa</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php">Dashboard</a>
-                </li>
-                <?php if ($is_admin): ?>
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.php">
+                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
+            </a>
+            <div class="d-flex align-items-center">
+                <button class="nav-link btn theme-toggle" id="theme-toggle" title="Tema Değiştir">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="admin.php">Admin Paneli</a>
+                        <a class="nav-link" href="index.php">Anasayfa</a>
                     </li>
-                <?php endif; ?>
-            </ul>
-            <ul class="navbar-nav align-items-center">
-                <?php if (isset($_SESSION['username'])): ?>
                     <li class="nav-item">
+                        <a class="nav-link active" href="dashboard.php">Dashboard</a>
+                    </li>
+                    <?php if ($is_admin): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin.php">Admin Paneli</a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item d-flex align-items-center">
+                        <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profil Resmi" class="profile-pic me-2" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                         <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="logout.php">Çıkış Yap</a>
                     </li>
-                    <!-- Tema simgesi "Çıkış Yap" bağlantısının sağına eklendi -->
-                    <li class="nav-item">
-                        <button class="nav-link btn" id="theme-toggle" title="Tema Değiştir">
-                            <i class="fas fa-moon"></i>
-                        </button>
-                    </li>
-                <?php else: ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="register.html">Kayıt Ol</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="login.php">Giriş Yap</a>
-                    </li>
-                <?php endif; ?>
-            </ul>
+                </ul>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <!-- Profil Güncelleme Formu -->
     <div class="content">
         <div class="container update-section">
             <div class="row justify-content-center">
                 <div class="col-md-8">
+                    <!-- Mesaj Alanı -->
+                    <?php if ($message): ?>
+                        <div class="custom-alert custom-alert-<?php echo htmlspecialchars($message_type); ?>" id="update-message">
+                            <div class="custom-alert-content"><?php echo htmlspecialchars($message); ?></div>
+                            <div class="custom-progress"><div class="custom-progress-bar"></div></div>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="card update-card" data-aos="fade-up" data-aos-duration="1000">
                         <div class="card-body">
                             <h2 class="text-center">Profil Güncelle</h2>
-<!-- Mesaj Alanı -->
-<?php if ($message): ?>
-    <div class="alert alert-<?php echo htmlspecialchars($message_type); ?> alert-dismissible fade show" role="alert" id="update-message">
-        <?php echo htmlspecialchars($message); ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        <div class="progress mt-2">
-            <div class="progress-bar progress-bar-striped progress-bar-animated bg-<?php echo htmlspecialchars($message_type); ?>" role="progressbar" style="width: 100%;" id="message-timer"></div>
-        </div>
-    </div>
-<?php endif; ?>
-                            <form action="update_profile.php" method="POST" novalidate>
-                                <!-- Yeni eklenen isim alanı -->
+                            <!-- İstatistik -->
+                            <div class="alert alert-info text-center mb-4">
+                                Hedef Kilo İlerlemesi: <?php echo $progress_percentage; ?>%
+                            </div>
+
+                            <!-- Mevcut Profil Resmi -->
+                            <div class="text-center mb-4">
+                                <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profil Resmi" class="profile-pic" style="width: 100px; height: 100px;">
+                            </div>
+
+                            <form action="update_profile.php" method="POST" enctype="multipart/form-data" novalidate>
+                                <div class="mb-3">
+                                    <label for="profile_picture" class="form-label">Profil Resmi (isteğe bağlı)</label>
+                                    <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*">
+                                    <small class="form-text text-muted">Desteklenen formatlar: JPG, JPEG, PNG, GIF (maks. 5MB)</small>
+                                </div>
                                 <div class="mb-3">
                                     <label for="name" class="form-label">Adınız</label>
-                                    <input type="text" class="form-control" id="name" name="name" value="<?php echo htmlspecialchars($name ?? ''); ?>" placeholder="Adınızı girin (isteğe bağlı)">
+                                    <input type="text" class="form-control" id="name" name="name" value="<?php echo htmlspecialchars($name); ?>" placeholder="Adınızı girin (isteğe bağlı)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="email" class="form-label">E-posta</label>
@@ -245,7 +287,7 @@ $conn->close();
                                 </div>
                                 <div class="mb-3">
                                     <label for="target_weight" class="form-label">Hedef Kilo (kg)</label>
-                                    <input type="number" class="form-control" id="target_weight" name="target_weight" step="0.1" min="40" max="150" value="<?php echo htmlspecialchars($target_weight ? $target_weight : ''); ?>" placeholder="Hedef kilonuzu girin (isteğe bağlı)">
+                                    <input type="number" class="form-control" id="target_weight" name="target_weight" step="0.1" min="40" max="150" value="<?php echo htmlspecialchars($target_weight ?? ''); ?>" placeholder="Hedef kilonuzu girin (isteğe bağlı)">
                                 </div>
                                 <div class="mb-3">
                                     <label for="fitness_goal" class="form-label">Fitness Hedefiniz</label>
@@ -276,25 +318,21 @@ $conn->close();
                                 <div class="mb-3">
                                     <label for="workout_days" class="form-label">Haftada Kaç Gün Antrenman Yapabilirsiniz?</label>
                                     <input type="number" class="form-control" id="workout_days" name="workout_days" min="1" max="7" value="<?php echo htmlspecialchars($workout_days); ?>" required>
+                                    <small class="form-text text-muted">1 ile 7 arasında bir değer girin.</small>
                                 </div>
                                 <div class="mb-3">
                                     <label for="workout_duration" class="form-label">Antrenman Süresi (dk)</label>
                                     <input type="number" class="form-control" id="workout_duration" name="workout_duration" min="30" max="120" value="<?php echo htmlspecialchars($workout_duration); ?>" required>
                                 </div>
-                                <!-- Başarı Hikayelerinde Görünürlük Tercihleri -->
                                 <div class="mb-3">
                                     <label class="form-label">Başarı Hikayelerinde Görünürlük</label>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="show_name_in_success" name="show_name_in_success" <?php if ($show_name_in_success) echo "checked"; ?>>
-                                        <label class="form-check-label" for="show_name_in_success">
-                                            Adımın başarı hikayelerinde gösterilmesine izin ver
-                                        </label>
+                                        <label class="form-check-label" for="show_name_in_success">Adımın başarı hikayelerinde gösterilmesine izin ver</label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="show_username_in_success" name="show_username_in_success" <?php if ($show_username_in_success) echo "checked"; ?>>
-                                        <label class="form-check-label" for="show_username_in_success">
-                                            Kullanıcı adımın başarı hikayelerinde gösterilmesine izin ver
-                                        </label>
+                                        <label class="form-check-label" for="show_username_in_success">Kullanıcı adımın başarı hikayelerinde gösterilmesine izin ver</label>
                                     </div>
                                 </div>
                                 <button type="submit" class="btn btn-green w-100">Güncelle</button>
@@ -315,41 +353,30 @@ $conn->close();
         </div>
     </footer>
 
-<!-- Harici JS Dosyaları -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="js/core.js"></script>
+    <script src="js/theme.js"></script>
     <script>
-    // AOS Başlatma
-    AOS.init({
-        once: false,
-        offset: 50,
-        duration: 1000
-    });
-
-    // Yükleme Ekranı Kontrolü
-    window.addEventListener('load', function() {
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-            setTimeout(() => {
-                loadingScreen.classList.add('hidden');
+        AOS.init({ once: false, offset: 50, duration: 1000 });
+        window.addEventListener('load', function() {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
                 setTimeout(() => {
-                    loadingScreen.style.display = 'none';
+                    loadingScreen.classList.add('hidden');
+                    setTimeout(() => loadingScreen.style.display = 'none', 500);
                 }, 500);
-            }, 500);
-        }
+            }
 
-        // Mesajın otomatik kapanması ve animasyon
-        const message = document.getElementById('update-message');
-        if (message) {
-            setTimeout(() => {
-                message.classList.remove('show');
+            const message = document.getElementById('update-message');
+            if (message) {
                 setTimeout(() => {
-                    message.remove(); // Mesajı DOM'dan tamamen kaldır
-                }, 500); // Fade out animasyonu için süre
-            }, 5000); // 5 saniye sonra kapanır
-        }
-    });
+                    message.style.transition = 'opacity 0.5s ease-out';
+                    message.style.opacity = '0';
+                    setTimeout(() => message.remove(), 500);
+                }, 5000);
+            }
+        });
     </script>
 </body>
 </html>

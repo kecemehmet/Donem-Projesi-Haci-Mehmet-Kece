@@ -16,8 +16,22 @@ if ($conn->connect_error) {
     die("Bağlantı hatası: " . $conn->connect_error);
 }
 
-// Admin kontrolü
+// Admin kontrolü ve kullanıcı bilgilerini alma
 $is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1;
+$profile_picture = 'images/default_profile.png'; // Varsayılan değer
+
+if (isset($_SESSION['username'])) {
+    $username = $_SESSION['username'];
+    $stmt = $conn->prepare("SELECT profile_picture FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $profile_picture = $row['profile_picture'] ?? 'images/default_profile.png';
+    }
+    $stmt->close();
+}
 
 // İlk 2 harfi gösterip geri kalanını gizleyen fonksiyon
 function maskString($string) {
@@ -73,6 +87,29 @@ $conn->close();
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Mobil menü için profil resmi stil */
+        .navbar-toggler-profile {
+            border: none;
+            padding: 0;
+        }
+        .navbar-toggler-profile img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary-btn-bg);
+            transition: transform 0.3s ease;
+        }
+        .navbar-toggler-profile img:hover {
+            transform: scale(1.1);
+        }
+        @media (min-width: 992px) {
+            .navbar-toggler-profile {
+                display: none; /* Büyük ekranlarda gizle */
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Loading Screen -->
@@ -80,58 +117,59 @@ $conn->close();
         <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
     </div>
 
-<!-- Navbar -->
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="index.php">
-            <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
-        </a>
-        <!-- Tema simgesi ve hamburger menü yan yana -->
-        <div class="d-flex align-items-center">
-            <button class="nav-link btn theme-toggle" id="theme-toggle" title="Tema Değiştir">
-                <i class="fas fa-moon"></i>
-            </button>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.php">
+                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
+            </a>
+            <div class="d-flex align-items-center">
+                <button class="nav-link btn theme-toggle" id="theme-toggle" title="Tema Değiştir">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="navbar-toggler navbar-toggler-profile" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profil Resmi">
+                </button>
+            </div>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="index.php">Anasayfa</a>
+                    </li>
+                    <?php if (isset($_SESSION['username'])): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="dashboard.php">Dashboard</a>
+                        </li>
+                    <?php endif; ?>
+                    <?php if ($is_admin): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="admin.php">Admin Paneli</a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+                <ul class="navbar-nav align-items-center">
+                    <?php if (isset($_SESSION['username'])): ?>
+                        <li class="nav-item d-flex align-items-center">
+                            <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profil Resmi" class="profile-pic me-2">
+                            <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="logout.php">Çıkış Yap</a>
+                        </li>
+                    <?php else: ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="register.html">Kayıt Ol</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="login.php">Giriş Yap</a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
         </div>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link active" href="index.php">Anasayfa</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php">Dashboard</a>
-                </li>
-                <?php if ($is_admin): ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="admin.php">Admin Paneli</a>
-                    </li>
-                <?php endif; ?>
-            </ul>
-            <ul class="navbar-nav align-items-center">
-                <?php if (isset($_SESSION['username'])): ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Çıkış Yap</a>
-                    </li>
-                <?php else: ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="register.html">Kayıt Ol</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="login.php">Giriş Yap</a>
-                    </li>
-                <?php endif; ?>
-            </ul>
-        </div>
-    </div>
-</nav>
+    </nav>
 
-    <!-- İçerik (Değişmeden kalabilir) -->
+    <!-- İçerik -->
     <div class="content">
         <!-- Hero Section -->
         <section class="hero-section">
@@ -303,14 +341,12 @@ $conn->close();
     <script src="js/core.js"></script>
     <script src="js/theme.js"></script>
     <script>
-        // AOS Başlatma
         AOS.init({
             once: false,
             offset: 50,
             duration: 1000
         });
 
-        // Yükleme Ekranı Kontrolü
         window.addEventListener('load', function() {
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) {

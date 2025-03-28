@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = isset($_POST['password']) ? $_POST['password'] : '';
 
     // Kullanıcıyı bul (Hazırlıklı sorgu ile)
-    $stmt = $conn->prepare("SELECT password, is_admin, is_banned FROM users WHERE username = ?");
+    $stmt = $conn->prepare("SELECT password, is_admin, is_banned, profile_picture FROM users WHERE username = ?");
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -36,6 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } elseif (password_verify($password, $row['password'])) {
             $_SESSION['username'] = $username; // Oturum başlat
             $_SESSION['is_admin'] = $row['is_admin']; // is_admin değerini oturuma ekle
+            $_SESSION['profile_picture'] = $row['profile_picture'] ?? 'images/default_profile.png'; // Profil resmini oturuma ekle
             session_regenerate_id(true); // Oturum ID'sini yenile (güvenlik için)
             header("Location: dashboard.php"); // Dashboard’a yönlendir
             exit();
@@ -66,9 +67,9 @@ $conn->close();
 </head>
 <body>
 <div id="loading-screen">
-        <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
-    </div>
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
+</div>
+<nav class="navbar navbar-expand-lg navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="index.php">
             <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
@@ -114,47 +115,50 @@ $conn->close();
     </div>
 </nav>
 
-    <div class="content">
-        <div class="container login-section">
-            <div class="row justify-content-center">
-                <div class="col-md-6">
-                    <div class="card login-card" data-aos="fade-up" data-aos-duration="1000">
-                        <div class="card-body">
-                            <h2 class="text-center">Giriş Yap</h2>
-                            <?php if (isset($error)): ?>
-                                <div class="alert alert-danger" role="alert">
-                                    <?php echo htmlspecialchars($error); ?>
-                                </div>
-                            <?php endif; ?>
-                            <form action="login.php" method="POST">
-                                <div class="mb-3">
-                                    <label for="username" class="form-label">Kullanıcı Adı</label>
-                                    <input type="text" class="form-control" id="username" name="username" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="password" class="form-label">Şifre</label>
-                                    <input type="password" class="form-control" id="password" name="password" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
-                            </form>
-                            <p class="mt-3 text-center">Hesabınız yok mu? <a href="register.html">Kayıt Ol</a></p>
-                        </div>
+<div class="content">
+    <div class="container login-section">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card login-card" data-aos="fade-up" data-aos-duration="1000">
+                    <div class="card-body">
+                        <h2 class="text-center">Giriş Yap</h2>
+                        <?php if (isset($error)): ?>
+                            <div class="alert alert-danger" role="alert">
+                                <?php echo htmlspecialchars($error); ?>
+                            </div>
+                        <?php endif; ?>
+                        <form action="login.php" method="POST">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Kullanıcı Adı</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Şifre</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+                        </form>
+                        <p class="mt-3 text-center">Hesabınız yok mu? <a href="register.html">Kayıt Ol</a></p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <footer class="text-center">
-        <div class="container">
-            <p class="mb-0">© 2025 FitMate. Tüm hakları saklıdır.</p>
-            <p class="mb-0">İletişim: <a href="mailto:info@fitmate.com">info@fitmate.com</a> | Tel: <a href="tel:0123456789">0123 456 789</a></p>
-        </div>
-    </footer>
+<footer class="text-center">
+    <div class="container">
+        <p class="mb-0">© 2025 FitMate. Tüm hakları saklıdır.</p>
+        <p class="mb-0">İletişim: <a href="mailto:info@fitmate.com">info@fitmate.com</a> | Tel: <a href="tel:0123456789">0123 456 789</a></p>
+    </div>
+</footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script src="js/core.js"></script>
-    <script src="js/theme.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script src="js/core.js"></script>
+<script src="js/theme.js"></script>
+<script>
+    AOS.init();
+</script>
 </body>
 </html>

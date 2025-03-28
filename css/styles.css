@@ -323,14 +323,18 @@ body {
     }
 }
 
+/* Mobil görünüm için düzenleme */
 @media (max-width: 991px) {
     .navbar-collapse .navbar-nav .nav-link {
         text-align: left;
-        padding-left: 15px;
     }
     .theme-toggle {
-        margin-left: 40px;
-        font-size: 1.5rem; /* Mobil için biraz daha küçük ama yine de büyük */
+        font-size: 2rem; /* Mobil için büyük simge */
+        margin-right: 15px; /* Hamburger menüden sola kaydırmak için boşluk */
+    }
+    .navbar .d-flex {
+        gap: 10px; /* Tema simgesi ile hamburger menü arasında boşluk */
+        align-items: center;
     }
 }
 
@@ -797,8 +801,6 @@ body {
     transform: translateY(-3px);
 }
 
-
-
 /* Footer */
 footer {
     flex-shrink: 0;
@@ -831,12 +833,13 @@ footer a:hover {
     align-items: center;
     z-index: 9999;
     transition: opacity 0.5s ease;
+    opacity: 1; /* Başlangıçta tamamen görünür */
 }
 
 .loading-logo {
     width: 100px;
     height: 100px;
-    animation: spin 1.5s linear infinite;
+    animation: spin 0.5s linear infinite;
 }
 
 @keyframes spin {
@@ -846,6 +849,8 @@ footer a:hover {
 
 #loading-screen.hidden {
     opacity: 0;
+    visibility: hidden; /* Titremeyi önlemek için */
+    pointer-events: none; /* Gizlendikten sonra tıklanabilirliği kaldır */
 }
 
 #loading-screen.hidden .loading-logo {
@@ -935,4 +940,87 @@ footer a:hover {
 [data-theme="dark"] .alert {
     background: #333;
     color: var(--text-color);
+}
+
+.profile-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-btn-bg);
+    transition: transform 0.3s ease;
+}
+.profile-pic:hover {
+    transform: scale(1.1);
+}
+
+.admin-card table td {
+    color: #000 !important; /* Tablo hücrelerindeki tüm metinler siyah */
+}
+.admin-card table .feedback-link {
+    color: #000 !important; /* Geri bildirim bağlantısı siyah */
+    text-decoration: none; /* Alt çizgiyi kaldır */
+}
+.admin-card table .feedback-link:hover {
+    color: #000 !important; /* Hover’da da siyah kalsın */
+    text-decoration: underline; /* Hover’da alt çizgi */
+}
+.modal-body p {
+    color: #000 !important; /* Modal içindeki tüm metinler siyah */
+}
+.feedback-text-container {
+    max-height: 300px; /* Modal içindeki metin için maksimum yükseklik */
+    overflow-y: auto; /* Uzun metinlerde kaydırma çubuğu */
+    word-wrap: break-word; /* Kelimeleri kırarak taşmayı önle */
+    padding: 10px; /* İç boşluk */
+    border: 1px solid #e9ecef; /* Hafif bir çerçeve */
+    border-radius: 5px; /* Yuvarlak köşeler */
+    background-color: #f8f9fa; /* Hafif gri arka plan */
+}
+.modal-lg {
+    max-width: 800px; /* Modalın maksimum genişliğini artırdım */
+}
+
+/* Mesaj Stilleri */
+.custom-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: #fff;
+    opacity: 0.9;
+    z-index: 1050;
+    min-width: 250px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.5s ease-out;
+}
+.custom-alert-success {
+    background-color: rgba(40, 167, 69, 0.9); /* Yeşil */
+}
+.custom-alert-danger {
+    background-color: rgba(220, 53, 69, 0.9); /* Kırmızı */
+}
+.custom-alert-content {
+    font-size: 1rem;
+}
+.custom-progress {
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+.custom-progress-bar {
+    height: 100%;
+    background-color: #fff;
+    animation: progress 5s linear forwards;
+}
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 0.9; }
+}
+@keyframes progress {
+    from { width: 100%; }
+    to { width: 0; }
 }
