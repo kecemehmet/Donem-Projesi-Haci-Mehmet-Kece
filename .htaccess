@@ -1,0 +1,26 @@
+# CSS ve JS dosyaları için önbellek ayarları
+<FilesMatch "\.(css|js)$">
+    Header set Cache-Control "max-age=31536000, public"
+</FilesMatch>
+
+# Dizin listelemesini kapat
+Options -Indexes
+
+# PHP hata raporlamasını kapat
+php_flag display_errors off
+
+# Güvenlik başlıkları
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "SAMEORIGIN"
+Header set X-XSS-Protection "1; mode=block"
+
+# URL yönlendirme kuralları
+RewriteEngine On
+RewriteBase /
+
+# CSS, JS ve resim dosyaları için yönlendirme yapma
+RewriteCond %{REQUEST_URI} !\.(css|js|jpg|jpeg|png|gif|ico)$ [NC]
+
+# Admin paneli için URL yönlendirme
+RewriteRule ^admin/([^/]+)/?$ admin.php?tab=$1 [L,QSA]
+RewriteRule ^admin/?$ admin.php [L,QSA] 

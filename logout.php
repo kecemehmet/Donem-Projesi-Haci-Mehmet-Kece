@@ -1,11 +1,23 @@
 <?php
-session_start(); // Oturumu başlat
+session_start();
 
-// Oturumu temizle ve sonlandır
-session_unset(); // Tüm oturum değişkenlerini temizle
-session_destroy(); // Oturumu yok et
+// Tüm oturum verilerini temizle
+$_SESSION = array();
 
-// Anasayfaya yönlendir
-header("Location: index.php");
+// Oturum çerezini sil
+if (isset($_COOKIE[session_name()])) {
+    setcookie(session_name(), '', time() - 3600, '/');
+}
+
+// Oturumu sonlandır
+session_destroy();
+
+// Başarılı çıkış mesajını ayarla
+session_start();
+$_SESSION['message'] = "Başarıyla çıkış yaptınız.";
+$_SESSION['message_type'] = "success";
+
+// Login sayfasına yönlendir
+header("Location: login.php");
 exit();
-?>
+?> 

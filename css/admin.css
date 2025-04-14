@@ -1,0 +1,208 @@
+/* Admin Panel Genel Stiller */
+:root {
+    --admin-bg: #f8f9fa;
+    --admin-card-bg: #ffffff;
+    --admin-text: #212529;
+    --admin-border: #dee2e6;
+    --admin-hover: #f8f9fa;
+    --admin-muted: #6c757d;
+    --admin-link: #0d6efd;
+    --admin-sidebar-bg: #f8f9fa;
+    --admin-sidebar-text: #212529;
+    --admin-sidebar-hover: rgba(13, 110, 253, 0.1);
+    --admin-sidebar-active: #0d6efd;
+    --admin-sidebar-active-text: #ffffff;
+}
+
+[data-theme="dark"] {
+    --admin-bg: #1a1d20;
+    --admin-card-bg: #2c3034;
+    --admin-text: #e9ecef;
+    --admin-border: #373b3e;
+    --admin-hover: #32383e;
+    --admin-muted: #e9ecef;
+    --admin-link: #5c9eff;
+    --admin-sidebar-bg: #212529;
+    --admin-sidebar-text: #e9ecef;
+    --admin-sidebar-hover: rgba(92, 158, 255, 0.1);
+    --admin-sidebar-active: #5c9eff;
+    --admin-sidebar-active-text: #ffffff;
+}
+
+/* Dark mode için text-muted override */
+[data-theme="dark"] .text-muted {
+    color: #e9ecef !important;
+    opacity: 0.8;
+}
+
+/* Ana İçerik Alanı */
+.admin-panel {
+    background-color: var(--admin-bg);
+    color: var(--admin-text);
+    min-height: 100vh;
+}
+
+/* Sidebar */
+#sidebar {
+    background-color: var(--admin-sidebar-bg);
+    border-right: 1px solid var(--admin-border);
+    padding: 1rem;
+}
+
+#sidebar .nav-link {
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+#sidebar .nav-link:hover {
+    background-color: var(--admin-sidebar-hover);
+    transform: translateX(5px);
+    color: var(--admin-sidebar-active);
+}
+
+#sidebar .nav-link.active {
+    background-color: var(--admin-sidebar-active);
+    color: var(--admin-sidebar-active-text);
+}
+
+#sidebar .nav-link i {
+    width: 24px;
+    margin-right: 8px;
+    text-align: center;
+}
+
+/* Kartlar */
+.card {
+    background-color: var(--admin-card-bg);
+    border: 1px solid var(--admin-border);
+}
+
+.card-header {
+    background-color: var(--admin-card-bg);
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.card-body {
+    color: var(--admin-text);
+}
+
+/* Tablolar */
+.table {
+    color: var(--admin-text);
+}
+
+.table thead th {
+    border-bottom-color: var(--admin-border);
+}
+
+.table td, .table th {
+    border-color: var(--admin-border);
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--admin-hover);
+}
+
+/* Form Elemanları */
+.form-control, .form-select {
+    background-color: var(--admin-card-bg);
+    border-color: var(--admin-border);
+    color: var(--admin-text);
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--admin-card-bg);
+    border-color: var(--admin-link);
+    color: var(--admin-text);
+}
+
+.form-control::placeholder {
+    color: var(--admin-muted);
+}
+
+/* Modal */
+.modal-content {
+    background-color: var(--admin-card-bg);
+    color: var(--admin-text);
+}
+
+.modal-header {
+    border-bottom-color: var(--admin-border);
+}
+
+.modal-footer {
+    border-top-color: var(--admin-border);
+}
+
+/* Badge ve Etiketler */
+.badge {
+    color: #fff;
+}
+
+/* İstatistik Kartları */
+.stat-card {
+    background-color: var(--admin-card-bg);
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.stat-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--admin-sidebar-active);
+}
+
+.stat-number {
+    color: var(--admin-text);
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: var(--admin-text);
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+/* Tablo Başlıkları */
+.card-header h5 {
+    color: var(--admin-text);
+    font-weight: 600;
+}
+
+/* Butonlar */
+.btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-theme="light"] .btn-close {
+    filter: none;
+}
+
+/* Özel Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--admin-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--admin-muted);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--admin-text);
+} 

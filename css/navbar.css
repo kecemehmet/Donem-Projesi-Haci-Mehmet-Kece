@@ -1,0 +1,252 @@
+/* Navbar Ana Stiller */
+.navbar {
+    background-color: var(--navbar-bg);
+    box-shadow: 0 2px 4px var(--shadow-color);
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+.navbar-logo {
+    height: 40px;
+    margin-right: 10px;
+}
+
+.navbar-nav .nav-link {
+    padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.navbar-nav .nav-link i {
+    margin-right: 8px;
+}
+
+/* Light tema stilleri */
+[data-theme="light"] .navbar,
+.navbar-light {
+    background-color: var(--navbar-bg);
+}
+
+[data-theme="light"] .navbar .nav-link,
+[data-theme="light"] .navbar .navbar-brand,
+[data-theme="light"] .navbar .navbar-toggler,
+[data-theme="light"] .navbar .theme-toggle,
+.navbar-light .nav-link,
+.navbar-light .navbar-brand,
+.navbar-light .navbar-toggler,
+.navbar-light .theme-toggle {
+    color: #333 !important;
+}
+
+[data-theme="light"] .navbar .nav-link:hover,
+[data-theme="light"] .navbar .navbar-brand:hover,
+.navbar-light .nav-link:hover,
+.navbar-light .navbar-brand:hover {
+    color: var(--primary-btn-bg) !important;
+    opacity: 0.9;
+}
+
+/* Dark tema stilleri */
+[data-theme="dark"] .navbar,
+.navbar-dark {
+    background-color: var(--navbar-bg);
+}
+
+[data-theme="dark"] .navbar .nav-link,
+[data-theme="dark"] .navbar .navbar-brand,
+[data-theme="dark"] .navbar .navbar-toggler,
+[data-theme="dark"] .navbar .theme-toggle,
+.navbar-dark .nav-link,
+.navbar-dark .navbar-brand,
+.navbar-dark .navbar-toggler,
+.navbar-dark .theme-toggle {
+    color: #fff !important;
+}
+
+[data-theme="dark"] .navbar .nav-link:hover,
+[data-theme="dark"] .navbar .navbar-brand:hover,
+.navbar-dark .nav-link:hover,
+.navbar-dark .navbar-brand:hover {
+    color: var(--primary-btn-bg) !important;
+    opacity: 0.9;
+}
+
+/* Aktif menü öğesi */
+.navbar .nav-link.active {
+    font-weight: 600;
+    color: var(--primary-btn-bg) !important;
+}
+
+/* Navbar toggle butonu */
+.navbar-toggler {
+    border: none;
+    padding: 0.25rem 0.75rem;
+    font-size: 1.25rem;
+    background: transparent;
+}
+
+.navbar-toggler:focus {
+    box-shadow: none;
+}
+
+/* Navbar toggle icon rengi */
+[data-theme="light"] .navbar-toggler-icon,
+.navbar-light .navbar-toggler-icon {
+    filter: invert(0);
+}
+
+
+
+/* Mobil Görünüm */
+@media (max-width: 991.98px) {
+    .navbar-collapse {
+        background-color: var(--navbar-bg);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-top: 0.5rem;
+        box-shadow: 0 2px 4px var(--shadow-color);
+    }
+}
+
+/* İçerik için boşluk */
+.content {
+    margin-top: 80px;
+}
+
+/* Dashboard özel stilleri */
+.navbar-toggler-profile {
+    border: none;
+    padding: 0;
+    background: transparent;
+}
+
+.navbar-toggler-profile img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary-btn-bg);
+    transition: transform 0.3s ease;
+}
+
+.navbar-toggler-profile img:hover {
+    transform: scale(1.1);
+}
+
+.sidebar {
+    background: var(--primary-gradient);
+    min-height: 100vh;
+    width: 250px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding: 20px;
+    color: white;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: white;
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.sidebar .nav-link i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+/* Logo alanı */
+.sidebar-brand {
+    padding: 20px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.sidebar-brand img {
+    max-width: 150px;
+    height: auto;
+}
+
+/* Mobil menü butonu */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+    background: var(--primary-gradient);
+    border: none;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Responsive tasarım */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    .mobile-menu-btn {
+        display: block;
+    }
+}
+
+/* Tema değiştirici */
+.theme-switcher {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.theme-switcher button {
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-switcher button:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: white;
+} 

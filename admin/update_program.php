@@ -1,0 +1,76 @@
+<?php
+require_once dirname(__DIR__) . '/includes/db_connection.php';
+
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Geçersiz istek metodu']);
+    exit;
+}
+
+try {
+    $data = json_decode(file_get_contents('php://input'), true);
+    
+    if (!$data) {
+        throw new Exception('Geçersiz veri formatı');
+    }
+    
+    // Program bilgilerini güncelle
+    $program_query = "UPDATE programs SET title = ?, description = ?, category = ?, difficulty_level = ? WHERE id = ?";
+    $stmt = $conn->prepare($program_query);
+    $stmt->bind_param("ssssi", 
+        $data['title'],
+        $data['description'],
+        $data['category'],
+        $data['difficulty_level'],
+        $data['program_id']
+    );
+    
+    if (!$stmt->execute()) {
+        throw new Exception('Program güncellenemedi: ' . $stmt->error);
+    }
+    
+    // Mevcut egzersizleri sil
+    $delete_query = "DELETE FROM program_exercises WHERE program_id = ?";
+    $stmt = $conn->prepare($delete_query);
+    $stmt->bind_param("i", $data['program_id']);
+    
+    if (!$stmt->execute()) {
+        throw new Exception('Egzersizler silinemedi: ' . $stmt->error);
+    }
+    
+    // Yeni egzersizleri ekle
+    $exercise_query = "INSERT INTO program_exercises (program_id, day_number, exercise_order, exercise_name, sets, reps, weight, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($exercise_query);
+    
+    foreach ($data['exercises'] as $exercise) {
+        $stmt->bind_param("iiissidi",
+            $data['program_id'],
+            $exercise['day_number'],
+            $exercise['order'],
+            $exercise['name'],
+            $exercise['sets'],
+            $exercise['reps'],
+            $exercise['weight'],
+            $exercise['duration']
+        );
+        
+        if (!$stmt->execute()) {
+            throw new Exception('Egzersiz eklenemedi: ' . $stmt->error);
+        }
+    }
+    
+    echo json_encode([
+        'success' => true,
+        'message' => 'Program başarıyla güncellendi'
+    ]);
+    
+} catch (Exception $e) {
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
+}
+
+$conn->close();
+?> 

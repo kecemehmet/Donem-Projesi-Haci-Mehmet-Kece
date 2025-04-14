@@ -1,174 +1,148 @@
 <?php
 session_start();
+require_once 'config.php';
 
-// Kullanıcı giriş yapmış mı kontrol et
+// Kullanıcı girişi kontrolü
 if (!isset($_SESSION['username'])) {
-    header("Location: index.php");
+    header("Location: login.php");
     exit();
 }
 
-// Admin kontrolü (oturumdan al)
-$is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] === 1;
-
-// Veritabanı bağlantı bilgileri
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "fitness_db";
-
-// Veritabanı bağlantısı
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Bağlantı kontrolü
-if ($conn->connect_error) {
-    die("Bağlantı hatası: " . $conn->connect_error);
-}
-
-// Kullanıcı bilgilerini al
+// Veritabanı bağlantısı ve kullanıcı verilerini çekme
 $username = $_SESSION['username'];
-$sql = "SELECT * FROM users WHERE username=?";
-$stmt = $conn->prepare($sql);
+$stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $result = $stmt->get_result();
+$user = $result->fetch_assoc();
 
-if ($result->num_rows > 0) {
-    $row = $result->fetch_assoc();
-    $email = $row['email'];
-    $height = $row['height'];
-    $weight = $row['weight'];
-    $bmi = $row['bmi'];
-    $fitness_goal = $row['fitness_goal'];
-    $experience_level = $row['experience_level'];
-    $preferred_exercises = $row['preferred_exercises'];
-    $workout_days = $row['workout_days'];
-    $workout_duration = $row['workout_duration'];
-    $target_weight = $row['target_weight'];
-    $profile_picture = $row['profile_picture'] ?? 'images/default_profile.png';
-    $user_id = $row['id'];
+// Kullanıcının programlarını çek
+$stmt = $conn->prepare("SELECT * FROM user_programs WHERE user_id = ?");
+$stmt->bind_param("i", $user['id']);
+$stmt->execute();
+$programs_result = $stmt->get_result();
+$programs = [];
+while ($program = $programs_result->fetch_assoc()) {
+    $programs[] = $program;
+}
+
+// BMI hesaplama
+$bmi = 0;
+$bmi_category = "Belirtilmemiş";
+$bmi_icon = "fa-question";
+
+if (!empty($user['height']) && !empty($user['weight']) && $user['height'] > 0) {
+    $height_m = $user['height'] / 100;
+    $bmi = $user['weight'] / ($height_m * $height_m);
+    $bmi = round($bmi, 1);
+
+    // BMI kategorisi belirleme
+    if ($bmi < 18.5) {
+        $bmi_category = "Zayıf";
+        $bmi_icon = "fa-person-running";
+    } elseif ($bmi >= 18.5 && $bmi < 25) {
+        $bmi_category = "Normal";
+        $bmi_icon = "fa-heart";
+    } elseif ($bmi >= 25 && $bmi < 30) {
+        $bmi_category = "Kilolu";
+        $bmi_icon = "fa-dumbbell";
+    } else {
+        $bmi_category = "Obez";
+        $bmi_icon = "fa-weight-scale";
+    }
+}
+
+// İlk kayıt için başlangıç ağırlığını ayarla (Eğer NULL ise)
+if ($user['initial_weight'] === null && $user['weight'] !== null) {
+    // Burada veritabanını güncelle
+    $stmt_update_initial = $conn->prepare("UPDATE users SET initial_weight = ? WHERE id = ?");
+    $stmt_update_initial->bind_param("di", $user['weight'], $user['id']);
+    $stmt_update_initial->execute();
+    $stmt_update_initial->close();
+    // Güncellenen değeri $user dizisine de yansıt
+    $user['initial_weight'] = $user['weight'];
+}
+
+// İlerleme yüzdesi hesaplama
+$progress_percent = 0;
+// Gerekli değerlerin varlığını ve sayısal olup olmadığını kontrol et
+if (isset($user['target_weight']) && is_numeric($user['target_weight']) &&
+    isset($user['initial_weight']) && is_numeric($user['initial_weight']) &&
+    isset($user['weight']) && is_numeric($user['weight']))
+{
+    $initial_w = (float)$user['initial_weight'];
+    $target_w = (float)$user['target_weight'];
+    $current_w = (float)$user['weight'];
+
+    $total_change_needed = $target_w - $initial_w;
+    $current_change_made = $current_w - $initial_w;
+
+    if ($total_change_needed == 0) {
+        // Başlangıç ve hedef aynı
+        $progress_percent = ($current_w == $target_w) ? 100 : 0;
+    } else {
+        // İlerleme yüzdesini hesapla (0 ile 100 arasında sınırla)
+        // Kaybedilen/kazanılan kiloyu toplam hedefe oranla
+        $progress = ($current_change_made / $total_change_needed) * 100;
+        
+        // Eğer hedef kilo almaksa ve kullanıcı kilo verdiyse progress negatif olur (0 olmalı)
+        // Eğer hedef kilo vermekse ve kullanıcı kilo aldıysa progress negatif olur (0 olmalı)
+        // Eğer hedefin tersi yönde ilerleme varsa (kilo alması gerekirken vermişse vb.), ilerlemeyi 0 kabul edebiliriz.
+        // VEYA sadece ne kadar yol kat edildiğine bakabiliriz:
+        $progress = (abs($current_change_made) / abs($total_change_needed)) * 100;
+        
+        $progress_percent = max(0, min(100, round($progress)));
+    }
 } else {
-    echo "Kullanıcı bulunamadı!";
-    exit();
-}
-$stmt->close();
-
-// Geri Bildirim Bildirimlerini Al
-$feedback_notifications = $conn->query("SELECT * FROM feedback WHERE user_id = $user_id ORDER BY created_at DESC");
-
-// Okunmamış Bildirim Sayısını Al
-$unread_feedback_count = $conn->query("SELECT COUNT(*) as count FROM feedback WHERE user_id = $user_id AND response_status != 'read'")->fetch_assoc()['count'];
-
-// Geri Bildirimi Silme
-if (isset($_GET['delete_feedback'])) {
-    $feedback_id = $_GET['delete_feedback'];
-    $stmt = $conn->prepare("DELETE FROM feedback WHERE id = ? AND user_id = ?");
-    $stmt->bind_param("ii", $feedback_id, $user_id);
-    $stmt->execute();
-    $stmt->close();
-    header("Location: dashboard.php?success=Geri bildirim başarıyla silindi!");
-    exit();
+    // Hedef veya başlangıç kilosu belirtilmemişse ilerleme 0
+    $progress_percent = 0;
 }
 
-// Geri Bildirimi Okundu Olarak İşaretle
-if (isset($_GET['mark_read'])) {
-    $feedback_id = $_GET['mark_read'];
-    $stmt = $conn->prepare("UPDATE feedback SET response_status = 'read' WHERE id = ? AND user_id = ?");
-    $stmt->bind_param("ii", $feedback_id, $user_id);
-    $stmt->execute();
-    $stmt->close();
-    header("Location: dashboard.php?success=Geri bildirim okundu olarak işaretlendi!");
-    exit();
+// Kullanıcının eksik bilgilerini kontrol et
+$missing_info = false;
+$missing_fields = [];
+
+if (empty($user['height']) || $user['height'] <= 0) {
+    $missing_info = true;
+    $missing_fields[] = 'boy';
+}
+if (empty($user['weight']) || $user['weight'] <= 0) {
+    $missing_info = true;
+    $missing_fields[] = 'kilo';
+}
+if (empty($user['fitness_goal'])) {
+    $missing_info = true;
+    $missing_fields[] = 'fitness hedefi';
+}
+if (empty($user['experience_level'])) {
+    $missing_info = true;
+    $missing_fields[] = 'deneyim seviyesi';
 }
 
-// Özel Antrenman Programını Al
-$custom_workout = $conn->query("SELECT * FROM custom_workout_programs WHERE user_id = $user_id");
-$custom_program = [];
-if ($custom_workout->num_rows > 0) {
-    while ($row = $custom_workout->fetch_assoc()) {
-        $custom_program[$row['day']] = [
-            'activity' => $row['activity'],
-            'image' => $row['image'] ?? 'https://www.ekinhukuk.com.tr/wp-content/uploads/2022/08/dinlenme-sureleri.jpg'
-        ];
-    }
+// Son program bilgilerini al
+$last_program = null;
+$program_query = "SELECT p.*, u.name as trainer_name 
+                 FROM programs p 
+                 LEFT JOIN users u ON p.trainer_id = u.id 
+                 WHERE p.user_id = ? 
+                 ORDER BY p.created_at DESC 
+                 LIMIT 1";
+$stmt = $conn->prepare($program_query);
+$stmt->bind_param("i", $user['id']);
+$stmt->execute();
+$program_result = $stmt->get_result();
+
+if ($program_result->num_rows > 0) {
+    $last_program = $program_result->fetch_assoc();
+    // Null kontrolü ve varsayılan değerler
+    $last_program['title'] = $last_program['title'] ?? 'Program Başlığı';
+    $last_program['trainer_name'] = $last_program['trainer_name'] ?? 'Bilinmiyor';
+    $last_program['created_at'] = $last_program['created_at'] ?? date('Y-m-d H:i:s');
 }
-
-// Antrenman programını oluşturma fonksiyonu
-function createWorkoutProgram($bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration) {
-    $program = [];
-    $days = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
-    $exercise_types = [
-        "cardio" => ["Koşu", "Bisiklet", "Yüzme", "HIIT"],
-        "strength" => ["Göğüs ve Triceps", "Sırt ve Biceps", "Bacak ve Omuz", "Tüm Vücut Kuvvet"],
-        "flexibility" => ["Yoga", "Esneme", "Pilates"],
-        "team_sports" => ["Basketbol", "Futbol", "Voleybol"]
-    ];
-    $images = [
-        "Koşu" => "https://images.unsplash.com/photo-1502224562085-639556652f33",
-        "Bisiklet" => "https://blog.korayspor.com/wp-content/uploads/2023/08/Sabit-Bisiklet-Yag-Yakar-Mi.jpg",
-        "Yüzme" => "https://www.acibadem.com.tr/hayat/Images/YayinMakaleler/yuzmenin-faydalari_733414_1.png",
-        "HIIT" => "https://images.contentstack.io/v3/assets/blt45c082eaf9747747/blta585249cb277b1c3/5fdcfa83a703d10ab87e827b/HIIT.jpg?format=pjpg&auto=webp&quality=76&width=1232",
-        "Göğüs ve Triceps" => "https://www.macfit.com/wp-content/uploads/2023/01/gogus-buyutme-yontemleri.jpg",
-        "Sırt ve Biceps" => "https://minio.yalispor.com.tr/sneakscloud/blog/baslik_61c0523488163.jpg",
-        "Bacak ve Omuz" => "https://shreddedbrothers.com/uploads/blogs/ckeditor/files/bacak-kas%C4%B1(2).jpg",
-        "Tüm Vücut Kuvvet" => "https://images.unsplash.com/photo-1517838277536-f5f99be501cd",
-        "Yoga" => "https://dansakademi.com.tr/uploads/2021/11/yoga-nedir.jpg",
-        "Esneme" => "https://dansakademi.com.tr/uploads/2021/11/stretching-hareketleri.jpg",
-        "Pilates" => "https://minio.yalispor.com.tr/yalispor/blog/pilates-topuyla-egzersizler_5efde689e2ee9.jpg",
-        "Basketbol" => "https://images.unsplash.com/photo-1546519638-7e78a986d479",
-        "Futbol" => "https://images.unsplash.com/photo-1579952363873-27f3b8e24a18",
-        "Voleybol" => "https://images.unsplash.com/photo-1612872087720-48736c2a4a3e",
-        "Dinlenme" => "https://www.ekinhukuk.com.tr/wp-content/uploads/2022/08/dinlenme-sureleri.jpg"
-    ];
-
-    if ($fitness_goal == "weight_loss") {
-        $base_plan = array_merge($exercise_types["cardio"], ["Hafif Kuvvet"]);
-        if ($bmi >= 25) $base_plan[] = "Düşük Tempolu Kardiyo";
-    } elseif ($fitness_goal == "muscle_gain") {
-        $base_plan = $exercise_types["strength"];
-        if ($bmi < 18.5) $base_plan[] = "Ekstra Protein Odaklı Dinlenme";
-    } elseif ($fitness_goal == "general_fitness") {
-        $base_plan = array_merge($exercise_types["cardio"], $exercise_types["strength"], $exercise_types["flexibility"]);
-    } elseif ($fitness_goal == "endurance") {
-        $base_plan = $exercise_types["cardio"];
-        $base_plan[] = "Uzun Süreli Düşük Tempo";
-    }
-
-    if (in_array($preferred_exercises, array_keys($exercise_types))) {
-        $base_plan = array_merge($exercise_types[$preferred_exercises], $base_plan);
-    }
-
-    $intensity = [
-        "beginner" => "Hafif ",
-        "intermediate" => "Orta ",
-        "advanced" => "Yoğun "
-    ];
-
-    for ($i = 0; $i < $workout_days; $i++) {
-        $exercise = $intensity[$experience_level] . $base_plan[$i % count($base_plan)];
-        $daily_duration = round($workout_duration / $workout_days);
-        $program[$days[$i]] = [
-            "activity" => "$exercise ($daily_duration dk)",
-            "image" => $images[$base_plan[$i % count($base_plan)]] ?? $images["Dinlenme"]
-        ];
-    }
-
-    for ($i = $workout_days; $i < 7; $i++) {
-        $program[$days[$i]] = [
-            "activity" => "Dinlenme",
-            "image" => $images["Dinlenme"]
-        ];
-    }
-
-    return $program;
-}
-
-$weekly_program = count($custom_program) > 0 ? $custom_program : createWorkoutProgram($bmi, $fitness_goal, $experience_level, $preferred_exercises, $workout_days, $workout_duration);
-
-$conn->close();
 ?>
 
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" data-theme="<?php echo isset($_COOKIE['theme']) ? $_COOKIE['theme'] : 'light'; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -176,404 +150,449 @@ $conn->close();
     <link rel="icon" type="image/x-icon" href="images/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/navbar.css">
     <style>
-    /* Mevcut stiller korunuyor, yalnızca ilgili bölümler güncelleniyor */
-    .navbar-toggler-profile {
-        border: none;
-        padding: 0;
-    }
-    .navbar-toggler-profile img {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid var(--primary-btn-bg);
-        transition: transform 0.3s ease;
-    }
-    .navbar-toggler-profile img:hover {
-        transform: scale(1.1);
-    }
-    @media (min-width: 992px) {
-        .navbar-toggler-profile {
-            display: none;
+        .dashboard-container {
+            padding: 2rem 0;
+            margin-top: 76px;
+            min-height: calc(100vh - 76px);
+            background: linear-gradient(135deg, var(--bg-color) 0%, var(--card-bg) 100%);
         }
-    }
-    .feedback-section .card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+
+        /* Dark tema için text-muted renk ayarı - sadece dashboard için */
+        .dashboard-container [data-theme="dark"] .text-muted,
+        [data-theme="dark"] .dashboard-container .text-muted {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+
+        [data-theme="dark"] .dashboard-container .who-reference small.text-muted {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+
+        [data-theme="dark"] .dashboard-container .action-description {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+
+        [data-theme="dark"] .dashboard-container .program-details {
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+
+        .welcome-section {
+        text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .welcome-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, var(--primary-btn-bg), var(--secondary-btn-bg));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: titleAnimation 2s ease-in-out infinite;
+        }
+
+        .dashboard-card {
+            background: var(--card-bg);
         border-radius: 15px;
-    }
-    #charCount {
-        font-size: 0.9rem;
-        color: #6c757d;
-    }
-    .invalid-feedback-custom {
-        display: none;
-        color: #dc3545;
-    }
-    .custom-alert {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        border-radius: 8px;
-        color: #fff;
-        opacity: 0.9;
-        z-index: 1050;
-        min-width: 250px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        animation: slideIn 0.5s ease-out;
-    }
-    .custom-alert-success {
-        background-color: rgba(40, 167, 69, 0.9);
-    }
-    .custom-alert-danger {
-        background-color: rgba(220, 53, 69, 0.9);
-    }
-    .custom-alert-content {
-        font-size: 1rem;
-    }
-    .custom-progress {
-        height: 4px;
-        background-color: rgba(255, 255, 255, 0.3);
-        border-radius: 2px;
-        margin-top: 8px;
-        overflow: hidden;
-    }
-    .custom-progress-bar {
-        height: 100%;
-        background-color: #fff;
-        animation: progress 5s linear forwards;
-    }
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 0.9; }
-    }
-    @keyframes progress {
-        from { width: 100%; }
-        to { width: 0; }
-    }
-    /* Geri Bildirim Simgesi Stilleri */
-    .feedback-icon {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: #3b82f6;
-        color: #fff;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        cursor: pointer;
-        transition: transform 0.3s ease, background-color 0.3s ease;
-        z-index: 1000;
-    }
-    .feedback-icon:hover {
-        transform: scale(1.1);
-        background-color: #1e3a8a;
-    }
-    .feedback-icon .badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background-color: #ef4444;
-        color: #fff;
-        font-size: 0.75rem;
-        padding: 4px 8px;
-        border-radius: 50%;
-    }
-    /* Modern Modal Stilleri */
-    .modern-modal .modal-content {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2c2c2c 100%);
-        color: #fff;
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-    }
-    .modern-modal .modal-header {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.05);
-    }
-    .modern-modal .modal-title {
-        font-weight: 600;
-        color: #fff;
-    }
-    .modern-modal .modal-body {
-        background: rgba(255, 255, 255, 0.03);
-    }
-    .modern-modal .modal-footer {
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.05);
-    }
-    .modern-modal .table {
-        color: #fff;
-    }
-    .modern-modal .table thead {
-        background: rgba(255, 255, 255, 0.1);
-    }
-    .modern-modal .table tbody tr {
-        background: rgba(255, 255, 255, 0.05);
-        transition: background 0.3s ease;
-    }
-    .modern-modal .table tbody tr:hover {
-        background: rgba(255, 255, 255, 0.15);
-    }
-    .modern-modal .badge {
-        padding: 6px 12px;
-        border-radius: 12px;
-        font-weight: 500;
-    }
-    .modern-modal .badge.bg-warning {
-        background-color: #f59e0b !important;
-        color: #fff;
-    }
-    .modern-modal .badge.bg-success {
-        background-color: #10b981 !important;
-        color: #fff;
-    }
-    .modern-modal .badge.bg-info {
-        background-color: #3b82f6 !important;
-        color: #fff;
-    }
-    .modern-modal .btn-modern {
-        padding: 5px 10px;
-        font-size: 0.85rem;
-        border-radius: 20px;
+            padding: 2rem;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            box-shadow: 0 4px 6px var(--shadow-color);
+        }
+
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary-btn-bg);
+            box-shadow: 0 10px 20px var(--shadow-color);
+        }
+
+        .dashboard-card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            color: var(--primary-btn-bg);
+            margin-bottom: 1.5rem;
         transition: all 0.3s ease;
     }
-    .modern-modal .btn-primary {
-        background-color: #3b82f6;
-        border: none;
+
+        .dashboard-card:hover .card-icon {
+            transform: scale(1.2) rotate(10deg);
+            color: var(--secondary-btn-bg);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, var(--primary-btn-bg), var(--secondary-btn-bg));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .progress-container {
+            margin-top: 1rem;
+        }
+
+        .progress {
+            height: 1rem;
+            border-radius: 0.5rem;
+            background: var(--bg-color);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            background: linear-gradient(45deg, var(--primary-btn-bg), var(--secondary-btn-bg));
+            position: relative;
+            overflow: hidden;
+            transition: width 1s ease;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        .program-list {
+            margin-top: 2rem;
+        }
+
+        .program-item {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .program-item:hover {
+            transform: translateX(10px);
+            border-color: var(--primary-btn-bg);
+            box-shadow: 0 4px 6px var(--shadow-color);
+        }
+
+        .program-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+
+        .program-details {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .bmi-category {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-weight: 600;
+            margin-top: 1rem;
+            background: linear-gradient(45deg, var(--primary-btn-bg), var(--secondary-btn-bg));
+        color: #fff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes titleAnimation {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .chart-container {
+            position: relative;
+            margin-top: 1rem;
+            height: 300px;
+        }
+
+        @media (max-width: 768px) {
+            .welcome-title {
+                font-size: 2rem;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+
+            .dashboard-card {
+                margin-bottom: 1rem;
+            }
+        }
+
+        .action-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            margin-bottom: 1rem;
+        }
+
+        .action-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-btn-bg);
+            box-shadow: 0 8px 15px var(--shadow-color);
+        }
+
+        .action-icon {
+            font-size: 2.5rem;
+            color: var(--primary-btn-bg);
+            margin-bottom: 1rem;
+        }
+
+        .action-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
+
+        .action-description {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .action-btn {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            background: linear-gradient(45deg, var(--primary-btn-bg), var(--secondary-btn-bg));
+        color: #fff;
+            text-decoration: none;
+        transition: all 0.3s ease;
     }
-    .modern-modal .btn-primary:hover {
-        background-color: #1e3a8a;
+
+        .action-btn:hover {
+            transform: scale(1.05);
+            color: #fff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .who-reference {
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+
+        .bmi-ranges {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .bmi-range {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background: var(--bg-color);
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        .bmi-range.active {
+            background: linear-gradient(45deg, var(--primary-btn-bg), var(--secondary-btn-bg));
+            color: #fff;
+            transform: scale(1.02);
+            box-shadow: 0 2px 4px var(--shadow-color);
     }
-    .modern-modal .btn-danger {
-        background-color: #ef4444;
-        border: none;
+        .toast-container {
+            z-index: 1090; /* Navbarın üzerinde olması için */
     }
-    .modern-modal .btn-danger:hover {
-        background-color: #b91c1c;
-    }
-    .modern-modal .btn-secondary {
-        background-color: #4b5563;
-        border: none;
-    }
-    .modern-modal .btn-secondary:hover {
-        background-color: #374151;
-    }
-    .modern-modal .feedback-link {
-        color: #60a5fa;
-        text-decoration: none;
-        opacity: 0.6; /* Silik görünüm */
-        transition: opacity 0.3s ease;
-    }
-    .modern-modal .feedback-link:hover {
-        color: #93c5fd;
-        opacity: 1;
-        text-decoration: underline;
-    }
-    /* Silik yazıların rengini sabitleme */
-    .modern-modal .feedback-link,
-    .modern-modal .feedback-link:hover {
-        color: #000 !important; /* Her zaman siyah */
-    }
-    /* Detay Modal Stilleri */
-    .modern-modal .feedback-text-container {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 10px;
-    }
-</style>
+    </style>
 </head>
 <body>
-    <div id="loading-screen">
-        <img src="images/logo2.png" alt="FitMate Logo" class="loading-logo">
+    <?php include 'includes/navbar.php'; ?>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <!-- Toastlar buraya eklenecek -->
     </div>
 
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">
-                <img src="images/logo2.png" alt="Fitness App Logo" class="navbar-logo">
-            </a>
-            <div class="d-flex align-items-center">
-                <button class="nav-link btn theme-toggle" id="theme-toggle" title="Tema Değiştir">
-                    <i class="fas fa-moon"></i>
-                </button>
-                <button class="navbar-toggler navbar-toggler-profile" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profil Resmi">
-                </button>
+    <div class="dashboard-container">
+        <div class="container">
+            <!-- Welcome Section -->
+            <div class="welcome-section" data-aos="fade-up">
+                <h1 class="welcome-title">Hoş Geldin, <?php echo htmlspecialchars($user['name'] ?? $user['username']); ?>!</h1>
+                <p class="text-muted">Bugün nasıl hissediyorsun? İşte fitness yolculuğundaki son durumun.</p>
             </div>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.php">Anasayfa</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="dashboard.php">Dashboard</a>
-                    </li>
-                    <?php if ($is_admin): ?>
-                        <li class="nav-item">
-                            <a class="nav-link" href="admin.php">Admin Paneli</a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-                <ul class="navbar-nav align-items-center">
-                    <li class="nav-item d-flex align-items-center">
-                        <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profil Resmi" class="profile-pic me-2">
-                        <a class="nav-link" href="dashboard.php">Hoş Geldin, <?php echo htmlspecialchars($_SESSION['username']); ?></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Çıkış Yap</a>
-                    </li>
-                </ul>
+
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+                    <div class="action-card">
+                        <i class="fas fa-user-edit action-icon"></i>
+                        <h3 class="action-title">Profil Görüntüle</h3>
+                        <p class="action-description">Profilinizi görüntüleyin ve güncelleyin</p>
+                        <a href="profile.php" class="action-btn">Profili Görüntüle</a>
+                    </div>
+                </div>
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="action-card">
+                        <i class="fas fa-comments action-icon"></i>
+                        <h3 class="action-title">Geri Bildirim</h3>
+                        <p class="action-description">Deneyiminizi bizimle paylaşın</p>
+                        <a href="feedback.php" class="action-btn">Geri Bildirim Yaz</a>
+                    </div>
+                </div>
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+                    <div class="action-card">
+                        <i class="fas fa-calculator action-icon"></i>
+                        <h3 class="action-title">BMI Hesapla</h3>
+                        <p class="action-description">Vücut kitle indeksinizi hesaplayın</p>
+                        <a href="calculate_bmi.php" class="action-btn">BMI Hesapla</a>
+                    </div>
+                </div>
             </div>
-        </div>
-    </nav>
 
-    <div class="content">
-        <div class="container mt-5">
-            <!-- Mesaj Alanı -->
-            <?php if (isset($_GET['success'])): ?>
-                <div class="custom-alert custom-alert-success" id="update-message">
-                    <div class="custom-alert-content">
-                        <?php echo htmlspecialchars($_GET['success']); ?>
-                    </div>
-                    <div class="custom-progress">
-                        <div class="custom-progress-bar"></div>
-                    </div>
-                </div>
-            <?php elseif (isset($_GET['feedback_success'])): ?>
-                <div class="custom-alert custom-alert-success" id="update-message">
-                    <div class="custom-alert-content">
-                        Geri bildiriminiz başarıyla gönderildi! Teşekkür ederiz.
-                    </div>
-                    <div class="custom-progress">
-                        <div class="custom-progress-bar"></div>
-                    </div>
-                </div>
-            <?php elseif (isset($_GET['feedback_error'])): ?>
-                <div class="custom-alert custom-alert-danger" id="update-message">
-                    <div class="custom-alert-content">
-                        <?php echo htmlspecialchars($_GET['feedback_error']); ?>
-                    </div>
-                    <div class="custom-progress">
-                        <div class="custom-progress-bar"></div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <div class="row justify-content-center">
-                <div class="col-md-10">
-                    <div class="card user-info-card" data-aos="fade-up" data-aos-duration="1000">
-                        <div class="card-body text-center">
-                            <input type="hidden" id="username" value="<?php echo htmlspecialchars($username); ?>">
-                            <input type="hidden" id="bmi" value="<?php echo number_format($bmi, 2); ?>">
-                            <input type="hidden" id="fitness_goal" value="<?php echo ucfirst($fitness_goal); ?>">
-                            <input type="hidden" id="workout_days" value="<?php echo $workout_days; ?>">
-
-                            <h2>Hoş Geldiniz, <?php echo htmlspecialchars($username); ?>!</h2>
-                            <div class="user-info mt-4">
-                                <div class="info-item">
-                                    <i class="fas fa-weight"></i>
-                                    <span>BMI: <?php echo number_format($bmi, 2); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <i class="fas fa-bullseye"></i>
-                                    <span>Hedef: <?php echo ucfirst($fitness_goal); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <i class="fas fa-user-graduate"></i>
-                                    <span>Seviye: <?php echo ucfirst($experience_level); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <i class="fas fa-dumbbell"></i>
-                                    <span>Tercih: <?php echo ucfirst($preferred_exercises); ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <i class="fas fa-calendar-week"></i>
-                                    <span>Gün: <?php echo $workout_days; ?></span>
-                                </div>
-                                <div class="info-item">
-                                    <i class="fas fa-clock"></i>
-                                    <span>Süre: <?php echo $workout_duration; ?> dk</span>
-                                </div>
-                            </div>
-                            <div class="alert alert-info mt-4" role="alert" style="border-radius: 15px; background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%); color: #1a3c34;">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Vücut Kitle Endeksi (BMI) hesaplamalarımız, Dünya Sağlık Örgütü (WHO) standartlarına uygun olarak gerçekleştirilmektedir.
-                            </div>
-                            <?php if ($target_weight && $weight): ?>
-                                <div class="alert alert-success mt-4" role="alert" style="border-radius: 15px; background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); color: #1a3c34;">
-                                    <i class="fas fa-bullseye me-2"></i>
-                                    Hedef Kilonuz: <?php echo $target_weight; ?> kg | 
-                                    <?php 
-                                        $difference = $weight - $target_weight;
-                                        if ($difference > 0) {
-                                            echo "Hedefe ulaşmak için " . number_format($difference, 1) . " kg vermeniz gerekiyor.";
-                                        } elseif ($difference < 0) {
-                                            echo "Hedefe ulaşmak için " . number_format(abs($difference), 1) . " kg almanız gerekiyor.";
-                                        } else {
-                                            echo "Tebrikler! Hedef kilonuza ulaştınız.";
-                                        }
-                                    ?>
-                                </div>
-                            <?php endif; ?>
-                            <div class="mt-4">
-                                <a href="update_profile.php" class="btn btn-primary" style="color: #fff !important;">Profil Güncelle</a>
-                            </div>
-                            <div class="mt-4 text-center">
-                                <h5>Başarılarınızı Paylaşın!</h5>
-                                <button class="btn btn-primary" onclick="shareOnX()">
-                                    <img src="images/x-logo.svg" alt="X Logo" style="width: 20px; height: 20px; vertical-align: middle;"> X'te Paylaş
-                                </button>
-                                <button class="btn btn-primary" onclick="shareOnInstagram()">
-                                    <i class="fab fa-instagram"></i> Instagram'da Paylaş
-                                </button>
+            <!-- Stats Grid -->
+            <div class="row">
+                <!-- BMI Card -->
+                <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="100">
+                    <div class="dashboard-card">
+                        <i class="fas <?php echo $bmi_icon; ?> card-icon"></i>
+                        <h3 class="card-title">Vücut Kitle İndeksi (BMI)</h3>
+                        <div class="stat-value"><?php echo $bmi; ?></div>
+                        <div class="bmi-category">
+                            <?php echo $bmi_category; ?>
+                        </div>
+                        <div class="who-reference mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> WHO Sınıflandırması:
+                            </small>
+                            <div class="bmi-ranges mt-2">
+                                <span class="bmi-range <?php echo $bmi < 18.5 ? 'active' : ''; ?>">Zayıf (<18.5)</span>
+                                <span class="bmi-range <?php echo $bmi >= 18.5 && $bmi < 25 ? 'active' : ''; ?>">Normal (18.5-24.9)</span>
+                                <span class="bmi-range <?php echo $bmi >= 25 && $bmi < 30 ? 'active' : ''; ?>">Kilolu (25-29.9)</span>
+                                <span class="bmi-range <?php echo $bmi >= 30 ? 'active' : ''; ?>">Obez (≥30)</span>
                             </div>
                         </div>
                     </div>
+                        </div>
 
-                    <div class="workout-section">
-                        <h4 class="text-center" data-aos="fade-up" data-aos-duration="800">
-                            <?php echo count($custom_program) > 0 ? 'Özel Antrenman Programınız' : 'Haftalık Antrenman Programınız'; ?>
-                        </h4>
-                        <div class="row">
-                            <?php foreach ($weekly_program as $day => $data): ?>
-                                <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-duration="1000" data-aos-delay="<?php echo (array_search($day, array_keys($weekly_program)) * 100); ?>">
-                                    <div class="card exercise-card">
-                                        <img src="<?php echo $data['image']; ?>" class="card-img-top" alt="<?php echo $data['activity']; ?>">
-                                        <div class="card-body">
-                                            <h5 class="card-title"><?php echo $day; ?></h5>
-                                            <p class="card-text"><?php echo $data['activity']; ?></p>
+                <!-- Weight Progress Card -->
+                <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="dashboard-card">
+                        <i class="fas fa-chart-line card-icon"></i>
+                        <h3 class="card-title">Kilo İlerlemesi</h3>
+                        <div class="stat-value"><?php echo $user['weight']; ?> kg</div>
+                        <div class="progress-container">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: <?php echo $progress_percent; ?>%"></div>
+                            </div>
+                            <p class="mt-2">Hedefe İlerleme: %<?php echo $progress_percent; ?></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Target Weight Card -->
+                <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="300">
+                    <div class="dashboard-card">
+                        <i class="fas fa-bullseye card-icon"></i>
+                        <h3 class="card-title">Hedef Kilo</h3>
+                        <div class="stat-value"><?php echo $user['target_weight']; ?> kg</div>
+                        <p>Başlangıç: <?php echo $user['initial_weight']; ?> kg</p>
                                         </div>
                                     </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
+                                        </div>
 
-                    <!-- Geri Bildirim Bölümü -->
-                    <div class="feedback-section mt-5" data-aos="fade-up" data-aos-duration="1000">
-                        <h4 class="text-center">Geribildirim Gönderin</h4>
-                        <div class="card">
-                            <div class="card-body">
-                                <form id="feedbackForm" action="submit_feedback.php" method="POST">
-                                    <div class="mb-3">
-                                        <label for="feedback_text" class="form-label">Görüşleriniz</label>
-                                        <textarea class="form-control" id="feedback_text" name="feedback_text" rows="4" placeholder="Bize önerilerinizi veya düşüncelerinizi yazabilirsiniz (en az 60 karakter)..." required></textarea>
-                                        <div id="charCount">0/60</div>
-                                        <div id="feedbackError" class="invalid-feedback-custom">Geribildirim en az 60 karakter olmalıdır!</div>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary w-100">Geribildirim Gönder</button>
-                                </form>
+            <!-- Programs Section -->
+            <div class="row mt-4">
+                <div class="col-md-6 mb-4">
+                    <div class="dashboard-card" data-aos="fade-up" data-aos-delay="300">
+                        <i class="fas fa-dumbbell card-icon"></i>
+                        <h3 class="card-title">Antrenman Programım</h3>
+                        <?php if ($missing_info): ?>
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Antrenman programı oluşturmak için eksik bilgilerinizi tamamlamanız gerekiyor:
+                                <ul class="mt-2 mb-0">
+                                    <?php foreach ($missing_fields as $field): ?>
+                                        <li><?php echo ucfirst($field); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
                             </div>
+                            <a href="calculate_bmi.php" class="btn btn-primary w-100">
+                                <i class="fas fa-calculator me-2"></i>Eksik Bilgileri Tamamla
+                            </a>
+                        <?php elseif ($last_program): ?>
+                            <h6 class="card-title"><?php echo htmlspecialchars($last_program['title']); ?></h6>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    Eğitmen: <?php echo htmlspecialchars($last_program['trainer_name']); ?><br>
+                                    Oluşturulma: <?php echo date('d.m.Y', strtotime($last_program['created_at'])); ?>
+                                </small>
+                            </p>
+                            <a href="view_program.php?id=<?php echo $last_program['id']; ?>" class="btn btn-primary">
+                                <i class="fas fa-dumbbell me-2"></i>Programı Görüntüle
+                            </a>
+                        <?php else: ?>
+                            <p class="text-muted mb-0">Henüz bir programınız bulunmuyor.</p>
+                            <a href="create_program.php" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus me-2"></i>Yeni Program Oluştur
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weight Chart -->
+            <div class="row mt-4">
+                <div class="col-12" data-aos="fade-up">
+                    <div class="dashboard-card">
+                        <h3 class="card-title">
+                            <i class="fas fa-chart-area card-icon"></i>
+                            Kilo Takibi
+                        </h3>
+                        <div class="chart-container">
+                            <canvas id="weightChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -581,193 +600,110 @@ $conn->close();
         </div>
     </div>
 
-    <!-- Geri Bildirim Simgesi -->
-    <div class="feedback-icon" data-bs-toggle="modal" data-bs-target="#feedbackNotificationsModal">
-        <i class="fas fa-comment-dots fa-lg"></i>
-        <?php if ($unread_feedback_count > 0): ?>
-            <span class="badge"><?php echo $unread_feedback_count; ?></span>
-        <?php endif; ?>
-    </div>
+    <?php include 'includes/footer.php'; ?>
 
-<!-- Geri Bildirim Bildirimleri Modal -->
-<div class="modal fade modern-modal" id="feedbackNotificationsModal" tabindex="-1" aria-labelledby="feedbackNotificationsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="feedbackNotificationsModalLabel">Geribildirimler</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
-            </div>
-            <div class="modal-body">
-                <?php if ($feedback_notifications->num_rows > 0): ?>
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Geri Bildirim</th>
-                                    <th>Durum</th>
-                                    <th>Tarih</th>
-                                    <th>İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php while ($feedback = $feedback_notifications->fetch_assoc()): ?>
-                                    <tr>
-                                        <td>
-                                            <a href="#" class="feedback-link" data-bs-toggle="modal" data-bs-target="#feedbackModal" data-feedback="<?php echo htmlspecialchars($feedback['feedback_text']); ?>" data-response="<?php echo htmlspecialchars($feedback['admin_response'] ?? 'Henüz yanıtlanmadı.'); ?>">
-                                                <?php 
-                                                    $feedback_text = htmlspecialchars($feedback['feedback_text']);
-                                                    echo substr($feedback_text, 0, 50) . (strlen($feedback_text) > 50 ? '...' : ''); 
-                                                ?>
-                                            </a>
-                                        </td>
-                                        <td>
-                                            <?php
-                                            if ($feedback['response_status'] == 'unresponded') {
-                                                echo '<span class="badge bg-warning">Yanıtlanmadı</span>';
-                                            } elseif ($feedback['response_status'] == 'responded') {
-                                                echo '<span class="badge bg-success">Yanıtlandı</span>';
-                                            } else {
-                                                echo '<span class="badge bg-info">Okundu</span>';
-                                            }
-                                            ?>
-                                        </td>
-                                        <td><?php echo date('d.m.Y H:i', strtotime($feedback['created_at'])); ?></td>
-                                        <td>
-                                            <div class="d-flex gap-2">
-                                                <?php if ($feedback['response_status'] == 'responded'): ?>
-                                                    <a href="dashboard.php?mark_read=<?php echo $feedback['id']; ?>" class="btn btn-primary btn-modern" title="Okundu Olarak İşaretle">
-                                                        <i class="fas fa-check"></i>
-                                                    </a>
-                                                <?php endif; ?>
-                                                <a href="dashboard.php?delete_feedback=<?php echo $feedback['id']; ?>" class="btn btn-danger btn-modern" title="Sil" onclick="return confirm('Bu geribildirimi silmek istediğinizden emin misiniz?');">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php else: ?>
-                    <p class="text-center">Henüz geribildiriminiz bulunmamaktadır.</p>
-                <?php endif; ?>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Geri Bildirim Detay Modal -->
-<div class="modal fade modern-modal" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="feedbackModalLabel">Geri Bildirim Detayı</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
-            </div>
-            <div class="modal-body">
-                <h6>Geri Bildiriminiz:</h6>
-                <div class="feedback-text-container" id="feedbackText"></div>
-                <h6 class="mt-3">Admin Yanıtı:</h6>
-                <div class="feedback-text-container" id="adminResponse"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-    <footer class="text-center">
-        <div class="container">
-            <p class="mb-0">© 2025 FitMate. Tüm hakları saklıdır.</p>
-            <p class="mb-0">İletişim: <a href="mailto:info@fitmate.com">info@fitmate.com</a> | Tel: <a href="tel:0123456789">0123 456 789</a></p>
-        </div>
-    </footer>
-
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/theme.js"></script>
     <script>
-        AOS.init({ once: false, offset: 50, duration: 1000 });
-        window.addEventListener('load', function() {
-            AOS.refresh();
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                setTimeout(() => {
-                    loadingScreen.classList.add('hidden');
-                    setTimeout(() => loadingScreen.style.display = 'none', 500);
-                }, 500);
-            }
-
-            const message = document.getElementById('update-message');
-            if (message) {
-                setTimeout(() => {
-                    message.style.transition = 'opacity 0.5s ease-out';
-                    message.style.opacity = '0';
-                    setTimeout(() => message.remove(), 500);
-                }, 5000);
-            }
+        // AOS Animasyonları
+        AOS.init({
+            duration: 1000,
+            once: true
         });
-        window.addEventListener('resize', AOS.refresh);
-        window.addEventListener('scroll', AOS.refresh);
 
-        function shareOnX() {
-            const username = document.getElementById('username')?.value || "Kullanıcı";
-            const bmi = document.getElementById('bmi')?.value || "N/A";
-            const fitnessGoal = document.getElementById('fitness_goal')?.value || "N/A";
-            const workoutDays = document.getElementById('workout_days')?.value || "N/A";
-            const text = `${username} olarak FitMate ile hedeflerime ilerliyorum! BMI: ${bmi}, Hedef: ${fitnessGoal}, Haftada ${workoutDays} gün antrenman! #FitMate #FitnessJourney`;
-            window.open("https://x.com/intent/tweet?text=" + encodeURIComponent(text), "_blank");
+        // Bildirim göster fonksiyonu (view_program.php'den kopyalandı)
+        function showToast(message, type) {
+            const toastContainer = document.querySelector('.toast-container');
+            if (!toastContainer) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0`; 
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+
+            toastContainer.appendChild(toast);
+            
+            const bsToast = new bootstrap.Toast(toast, { 
+                delay: 3000 // 3 saniye sonra otomatik kapanma
+             });
+            bsToast.show();
+
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.remove();
+            });
         }
 
-        function shareOnInstagram() {
-            alert("Instagram'da paylaşmak için lütfen ekran görüntüsü alıp uygulamadan yükleyin!");
-            window.open("https://www.instagram.com/", "_blank");
-        }
-
-        // Geri bildirim formu için karakter sayacı ve kontrol
+        // Sayfa yüklendiğinde session'daki mesajı kontrol et ve göster
         document.addEventListener('DOMContentLoaded', function() {
-            const feedbackText = document.getElementById('feedback_text');
-            const charCount = document.getElementById('charCount');
-            const feedbackError = document.getElementById('feedbackError');
-            const feedbackForm = document.getElementById('feedbackForm');
-
-            feedbackText.addEventListener('input', function() {
-                const length = this.value.length;
-                charCount.textContent = `${length}/60`;
-                if (length < 60) {
-                    charCount.style.color = '#dc3545';
-                    feedbackError.style.display = 'block';
-                } else {
-                    charCount.style.color = '#28a745';
-                    feedbackError.style.display = 'none';
+            <?php
+            if (isset($_SESSION['message'])) {
+                $message = json_encode($_SESSION['message']); // JS için encode et
+                $message_type = json_encode($_SESSION['message_type'] ?? 'info'); // Tür yoksa info varsay
+                echo "showToast($message, $message_type);";
+                unset($_SESSION['message']); // Mesajı gösterdikten sonra sil
+                unset($_SESSION['message_type']);
+            }
+            ?>
+             // Kilo takip grafiği kodunu buraya taşı (DOMContentLoaded içine)
+            const ctx = document.getElementById('weightChart').getContext('2d');
+            const weightChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Başlangıç', 'Hafta 1', 'Hafta 2', 'Hafta 3', 'Hafta 4'], // Daha dinamik etiketler eklenebilir
+                    datasets: [{
+                        label: 'Kilo Takibi',
+                        data: [
+                            <?php echo $user['initial_weight'] ?? 'null'; ?>, // NULL ise JS null
+                            <?php echo $user['weight'] ?? 'null'; ?> // Diğer haftalar için veri eklenebilir
+                        ],
+                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--primary-btn-bg').trim(),
+                        tension: 0.4,
+                        fill: true,
+                        backgroundColor: 'rgba(var(--primary-btn-bg-rgb), 0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: 'rgba(var(--text-color-rgb), 0.1)'
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim()
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(var(--text-color-rgb), 0.1)'
+                            },
+                            ticks: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim()
+                            }
+                        }
+                    }
                 }
-            });
-
-            feedbackForm.addEventListener('submit', function(e) {
-                if (feedbackText.value.length < 60) {
-                    e.preventDefault();
-                    feedbackError.style.display = 'block';
-                }
-            });
-
-            // Modal için geri bildirim metnini doldurma
-            const feedbackLinks = document.querySelectorAll('.feedback-link');
-            feedbackLinks.forEach(link => {
-                link.addEventListener('click', function() {
-                    const feedbackText = this.getAttribute('data-feedback');
-                    const adminResponse = this.getAttribute('data-response');
-                    document.getElementById('feedbackText').textContent = feedbackText;
-                    document.getElementById('adminResponse').textContent = adminResponse;
-
-                    // Bildirimler modalını kapat ve detay modalını aç
-                    const notificationsModal = bootstrap.Modal.getInstance(document.getElementById('feedbackNotificationsModal'));
-                    notificationsModal.hide();
-                });
             });
         });
     </script>
