@@ -16,4 +16,4 @@ Kullanım 🏃‍♀️
 
 FitMate ile kişisel fitness programınızı oluşturun ve ilerlemenizi takip edin. Aşağıda uygulamanın nasıl kullanılacağına dair bazı örnekler ve ekran görüntüleri bulunmaktadır.
 
-<a href="https://hizliresim.com/9d5cqxb"><img src="https://i.hizliresim.com/9d5cqxb.png" alt="Resim Yükle"></a>
+![Image](https://github.com/user-attachments/assets/63fdd80a-f517-4153-8420-07cf9b41dd13)
