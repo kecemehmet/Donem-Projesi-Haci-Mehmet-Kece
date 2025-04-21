@@ -4,7 +4,7 @@ FitMate, kişisel fitness programınızı oluşturmanıza ve takip etmenize yard
 
 ## Başlangıç 🚀
 
-Bu bölümde projeyi nasıl kuracağınızı ve çalıştıracağınızı açıklayın.
+Bu web sitesiz BMI hesaplayarak değerinize göre size özel antrenman programı sunar.
 
 ### Gereksinimler 📋
 
