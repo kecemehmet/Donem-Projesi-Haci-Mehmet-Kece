@@ -6,7 +6,7 @@ FitMate, kişisel fitness programınızı oluşturmanıza ve takip etmenize yard
 
 Bu web sitesiz BMI hesaplayarak değerinize göre size özel antrenman programı sunar.
 
-### Gereksinimler 📋
+### Kullanılanlar 📋
 
 - PHP (v7.4 veya üstü)
 - Web sunucusu (Apache veya Nginx)
